@@ -92,6 +92,9 @@ textarea{resize:vertical;min-height:64px}
 .mode-toggle button.active{background:var(--accent);color:#ffffff}
 .recurrence-row{display:grid;grid-template-columns:90px 1fr;gap:10px}
 .hint{font-size:11.5px;color:var(--text-faint)}
+.day-picker{display:flex;gap:6px;flex-wrap:wrap}
+.day-chip{font-family:var(--font-display);font-size:12px;font-weight:600;padding:7px 10px;border-radius:999px;border:1px solid var(--border);background:var(--bg-elevated);color:var(--text-faint);cursor:pointer}
+.day-chip.active{background:var(--accent);border-color:var(--accent);color:#ffffff}
 .toast-stack{position:fixed;bottom:20px;inset-inline-end:20px;display:grid;gap:10px;z-index:80}
 .toast{background:var(--bg-elevated);border:1px solid var(--border);border-inline-start:4px solid var(--accent);color:var(--text-primary);padding:12px 16px;border-radius:var(--radius-sm);font-size:13.5px;box-shadow:var(--shadow-panel);min-width:220px;animation:toast-in .2s ease}
 .toast.success{border-inline-start-color:var(--status-ok)}
@@ -339,6 +342,27 @@ textarea{resize:vertical;min-height:64px}
             <input type="datetime-local" id="f_first_review_at">
           </div>
           <div class="hint">بعد كل مراجعة، هيتحسب الموعد الجاي تلقائياً حسب التكرار</div>
+
+          <div class="form-row" style="margin-top:12px;">
+            <label>أيام التكرار (سيبيها كلها من غير تحديد لو عاوزة كل يوم)</label>
+            <div class="day-picker">
+              <button type="button" class="day-chip active" data-day="0">أحد</button>
+              <button type="button" class="day-chip active" data-day="1">اتنين</button>
+              <button type="button" class="day-chip active" data-day="2">تلات</button>
+              <button type="button" class="day-chip active" data-day="3">أربع</button>
+              <button type="button" class="day-chip active" data-day="4">خميس</button>
+              <button type="button" class="day-chip active" data-day="5">جمعة</button>
+              <button type="button" class="day-chip active" data-day="6">سبت</button>
+            </div>
+          </div>
+
+          <div class="form-row-2" style="margin-top:10px;">
+            <div class="form-row">
+              <label for="f_recurrence_end_time">يتوقف الساعة (اختياري)</label>
+              <input type="time" id="f_recurrence_end_time">
+            </div>
+          </div>
+          <div class="hint">لو حددتي وقت التوقف، التكرار هيشتغل بس من وقت أول موعد لحد وقت التوقف في كل يوم مفعّل، وبعدين يوقف لحد اليوم المفعّل الجاي</div>
         </div>
         <div class="form-row">
           <label for="f_notes">ملاحظات</label>
@@ -608,6 +632,10 @@ function bindUI() {
   document.getElementById('calModeWeekBtn').addEventListener('click', () => setCalendarMode('week'));
   document.getElementById('calModeDayBtn').addEventListener('click', () => setCalendarMode('day'));
 
+  document.querySelectorAll('.day-chip').forEach(chip => {
+    chip.addEventListener('click', () => chip.classList.toggle('active'));
+  });
+
   bindTaskRowActions('taskList');
   bindTaskRowActions('calendarDayList');
 }
@@ -686,22 +714,83 @@ function getOccurrences(t, rangeStart, rangeEnd) {
     return (anchor >= rangeStart && anchor <= rangeEnd) ? [{ date: anchor, isAnchor: true }] : [];
   }
 
+  const activeDays = (t.recurrence_days && t.recurrence_days.length) ? new Set(t.recurrence_days) : null; // null = كل الأيام
+  const startHour = anchor.getHours(), startMin = anchor.getMinutes();
+  let endHour = 23, endMin = 59;
+  if (t.recurrence_end_time) {
+    const parts = t.recurrence_end_time.split(':').map(Number);
+    endHour = parts[0]; endMin = parts[1] || 0;
+  }
+  const endMinsOfDay = endHour * 60 + endMin;
+
   const occurrences = [];
-  let d = new Date(anchor);
-  let guard = 0;
+  const anchorDay = new Date(anchor); anchorDay.setHours(0, 0, 0, 0);
 
-  // لو أول موعد بعد نهاية المدى، مفيش تكرارات جوه المدى ده
-  if (d > rangeEnd) return [];
+  let dayCursor = new Date(rangeStart); dayCursor.setHours(0, 0, 0, 0);
+  if (dayCursor < anchorDay) dayCursor = new Date(anchorDay);
 
-  while (d < rangeStart && guard < MAX_OCCURRENCES) { d = new Date(d.getTime() + iv); guard++; }
+  const rangeEndDay = new Date(rangeEnd); rangeEndDay.setHours(0, 0, 0, 0);
 
-  guard = 0;
-  while (d <= rangeEnd && guard < MAX_OCCURRENCES) {
-    occurrences.push({ date: new Date(d), isAnchor: d.getTime() === anchor.getTime() });
-    d = new Date(d.getTime() + iv);
-    guard++;
+  let dayGuard = 0;
+  while (dayCursor <= rangeEndDay && dayGuard < 3660) { // سقف أمان ~10 سنين من الأيام
+    dayGuard++;
+    const dow = dayCursor.getDay();
+    if (!activeDays || activeDays.has(dow)) {
+      let cursor = new Date(dayCursor);
+      cursor.setHours(startHour, startMin, 0, 0);
+      let innerGuard = 0;
+      while (innerGuard < 1000) {
+        const mins = cursor.getHours() * 60 + cursor.getMinutes();
+        if (mins > endMinsOfDay) break;
+        if (cursor >= anchor && cursor >= rangeStart && cursor <= rangeEnd) {
+          occurrences.push({ date: new Date(cursor), isAnchor: cursor.getTime() === anchor.getTime() });
+          if (occurrences.length >= MAX_OCCURRENCES) return occurrences;
+        }
+        if (cursor > rangeEnd) break;
+        cursor = new Date(cursor.getTime() + iv);
+        innerGuard++;
+      }
+    }
+    dayCursor = new Date(dayCursor.getTime() + 24 * 60 * 60 * 1000);
   }
   return occurrences;
+}
+
+// بتحسب أقرب موعد استحقاق جاي بعد وقت معيّن، مع مراعاة أيام التكرار ووقت التوقف اليومي
+function computeNextDueAfter(t, afterDate) {
+  const iv = intervalMs(t);
+  if (!iv) return null;
+
+  const anchor = new Date(t.review_at);
+  const startHour = anchor.getHours(), startMin = anchor.getMinutes();
+  const activeDays = (t.recurrence_days && t.recurrence_days.length) ? new Set(t.recurrence_days) : null;
+  let endHour = 23, endMin = 59;
+  if (t.recurrence_end_time) {
+    const parts = t.recurrence_end_time.split(':').map(Number);
+    endHour = parts[0]; endMin = parts[1] || 0;
+  }
+  const endMinsOfDay = endHour * 60 + endMin;
+
+  function isValid(d) {
+    if (activeDays && !activeDays.has(d.getDay())) return false;
+    return (d.getHours() * 60 + d.getMinutes()) <= endMinsOfDay;
+  }
+
+  let candidate = new Date(afterDate.getTime() + iv);
+  if (isValid(candidate)) return candidate;
+
+  // روحي لليوم الجاي بنفس وقت البداية، وكرري لحد ما تلاقي يوم مفعّل
+  let dayCursor = new Date(candidate);
+  dayCursor.setHours(startHour, startMin, 0, 0);
+  dayCursor = new Date(dayCursor.getTime() + 24 * 60 * 60 * 1000);
+
+  let guard = 0;
+  while (guard < 30) {
+    if (!activeDays || activeDays.has(dayCursor.getDay())) return dayCursor;
+    dayCursor = new Date(dayCursor.getTime() + 24 * 60 * 60 * 1000);
+    guard++;
+  }
+  return candidate;
 }
 
 // بيرجّع نسخ "مهام" جاهزة للعرض ليوم معين (بما فيها تكرارات المهام المتكررة)
@@ -787,7 +876,7 @@ function renderMonthGrid() {
       <div class="month-cell-bars">${bars}${more}</div>
     </div>`;
   }
-  return html;
+  return `<div class="month-grid">${html}</div>`;
 }
 
 // شبكة ساعات حقيقية (زي أوتلوك) — تُستخدم للعرض الأسبوعي واليومي
@@ -917,6 +1006,11 @@ function openModal(task) {
   document.getElementById('f_supervisor').value = task?.supervisor_name || '';
   document.getElementById('f_notes').value = task?.notes || '';
 
+  if (!task) {
+    document.querySelectorAll('.day-chip').forEach(chip => chip.classList.add('active'));
+    document.getElementById('f_recurrence_end_time').value = '';
+  }
+
   const mode = task?.review_mode || 'once';
   setMode(mode);
 
@@ -926,6 +1020,13 @@ function openModal(task) {
     document.getElementById('f_recurrence_value').value = task?.recurrence_value || 2;
     document.getElementById('f_recurrence_unit').value = task?.recurrence_unit || 'hours';
     document.getElementById('f_first_review_at').value = task ? toLocalInput(task.review_at) : '';
+    document.getElementById('f_recurrence_end_time').value = task?.recurrence_end_time || '';
+
+    const activeDays = task?.recurrence_days;
+    document.querySelectorAll('.day-chip').forEach(chip => {
+      const isActive = !activeDays || activeDays.length === 0 || activeDays.includes(Number(chip.dataset.day));
+      chip.classList.toggle('active', isActive);
+    });
   }
   document.getElementById('taskModal').hidden = false;
 }
@@ -966,12 +1067,19 @@ async function saveTask(e) {
     payload.review_at = new Date(val).toISOString();
     payload.recurrence_value = null;
     payload.recurrence_unit = null;
+    payload.recurrence_days = null;
+    payload.recurrence_end_time = null;
   } else {
     const val = document.getElementById('f_first_review_at').value;
     if (!val) { toast('حدد أول موعد مراجعة', 'error'); resetSaveBtn(); return; }
     payload.review_at = new Date(val).toISOString();
     payload.recurrence_value = parseInt(document.getElementById('f_recurrence_value').value, 10);
     payload.recurrence_unit = document.getElementById('f_recurrence_unit').value;
+
+    const activeChips = [...document.querySelectorAll('.day-chip.active')].map(c => Number(c.dataset.day));
+    // لو كل الأيام مفعّلة، نخزّن null (يعني كل يوم) بدل ما نخزن مصفوفة فيها كل الأرقام
+    payload.recurrence_days = activeChips.length === 7 ? null : activeChips;
+    payload.recurrence_end_time = document.getElementById('f_recurrence_end_time').value || null;
   }
 
   let error;
@@ -998,7 +1106,7 @@ async function markReviewed(id) {
   const now = new Date();
   let update;
   if (task.review_mode === 'recurring') {
-    const nextDue = new Date(now.getTime() + intervalMs(task));
+    const nextDue = computeNextDueAfter(task, now);
     update = { last_reviewed_at: now.toISOString(), review_at: nextDue.toISOString() };
   } else {
     update = { last_reviewed_at: now.toISOString(), status: 'done' };
