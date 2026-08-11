@@ -6,8 +6,98 @@
 <title>متابعة تنفيذ المهام</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css">
-<link rel="manifest" href="manifest.json">
+<style>
+:root{--bg-floor:#12151a;--bg-panel:#1a1e25;--bg-panel-2:#20252d;--bg-elevated:#262c36;--border:#2c323c;--border-soft:#232830;--text-primary:#eceef1;--text-muted:#8b93a1;--text-faint:#5a6270;--accent:#f5a623;--accent-dim:#b97c1a;--status-ok:#35d488;--status-ok-bg:rgba(53,212,136,.12);--status-warn:#ffc145;--status-warn-bg:rgba(255,193,69,.12);--status-late:#ff5c5c;--status-late-bg:rgba(255,92,92,.14);--status-done:#5a6270;--status-done-bg:rgba(90,98,112,.14);--radius-sm:6px;--radius-md:10px;--radius-lg:16px;--font-display:'Tajawal','Segoe UI',sans-serif;--font-data:'JetBrains Mono',Consolas,monospace;--shadow-panel:0 8px 24px rgba(0,0,0,.35)}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--bg-floor);color:var(--text-primary);font-family:var(--font-display);direction:rtl;min-height:100vh}
+body{background-image:radial-gradient(circle at 15% 0%,rgba(245,166,35,.05),transparent 40%),radial-gradient(circle at 85% 100%,rgba(53,212,136,.04),transparent 40%);background-attachment:fixed}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-track{background:var(--bg-floor)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:8px}
+.app-shell{max-width:1180px;margin:0 auto;padding:24px 20px 80px}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:18px 22px;background:var(--bg-panel);border:1px solid var(--border-soft);border-radius:var(--radius-lg);box-shadow:var(--shadow-panel);margin-bottom:22px}
+.brand{display:flex;align-items:center;gap:12px}
+.brand-mark{width:40px;height:40px;border-radius:10px;background:linear-gradient(145deg,var(--accent),var(--accent-dim));display:flex;align-items:center;justify-content:center;font-weight:800;font-size:18px;color:#14161a;flex-shrink:0}
+.brand-text h1{font-size:17px;margin:0;font-weight:800}
+.brand-text span{font-size:12.5px;color:var(--text-muted)}
+.topbar-actions{display:flex;align-items:center;gap:10px}
+.btn{font-family:var(--font-display);font-size:14px;font-weight:700;padding:10px 18px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--bg-elevated);color:var(--text-primary);cursor:pointer;transition:transform .12s ease;display:inline-flex;align-items:center;gap:8px;white-space:nowrap}
+.btn:hover{border-color:var(--text-faint);transform:translateY(-1px)}
+.btn-primary{background:var(--accent);border-color:var(--accent);color:#16181c}
+.btn-primary:hover{background:#ffb640;border-color:#ffb640}
+.btn-ghost{background:transparent;border-color:var(--border);color:var(--text-muted)}
+.btn-ghost:hover{color:var(--text-primary)}
+.btn-sm{padding:7px 12px;font-size:12.5px}
+.btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.icon-btn{width:34px;height:34px;padding:0;border-radius:var(--radius-sm);display:inline-flex;align-items:center;justify-content:center;background:transparent;border:1px solid var(--border);color:var(--text-muted);cursor:pointer}
+.icon-btn:hover{color:var(--text-primary);border-color:var(--text-faint)}
+.stats-strip{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px}
+.stat-card{background:var(--bg-panel);border:1px solid var(--border-soft);border-radius:var(--radius-md);padding:16px 18px;position:relative;overflow:hidden}
+.stat-card::before{content:'';position:absolute;inset-inline-start:0;top:0;bottom:0;width:4px}
+.stat-card.late::before{background:var(--status-late)}
+.stat-card.warn::before{background:var(--status-warn)}
+.stat-card.ok::before{background:var(--status-ok)}
+.stat-card.total::before{background:var(--accent)}
+.stat-num{font-family:var(--font-data);font-size:28px;font-weight:700;line-height:1}
+.stat-label{font-size:12.5px;color:var(--text-muted);margin-top:6px}
+.filters{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;align-items:center}
+.filters select,.filters input[type=text]{font-family:var(--font-display);background:var(--bg-panel);border:1px solid var(--border);color:var(--text-primary);padding:9px 14px;border-radius:var(--radius-sm);font-size:13.5px;min-width:140px}
+.filters .search-box{flex:1;min-width:200px}
+.board-panel{background:var(--bg-panel);border:1px solid var(--border-soft);border-radius:var(--radius-lg);box-shadow:var(--shadow-panel);overflow:hidden}
+.board-header{display:grid;grid-template-columns:6px 1.4fr 1fr 1fr 1.6fr 1.1fr .9fr auto;gap:12px;padding:14px 20px;font-size:11.5px;color:var(--text-faint);text-transform:uppercase;letter-spacing:.6px;border-bottom:1px solid var(--border-soft)}
+.task-row{display:grid;grid-template-columns:6px 1.4fr 1fr 1fr 1.6fr 1.1fr .9fr auto;gap:12px;align-items:center;padding:16px 20px;border-bottom:1px solid var(--border-soft);transition:background .15s ease}
+.task-row:last-child{border-bottom:none}
+.task-row:hover{background:var(--bg-panel-2)}
+.status-strip{align-self:stretch;border-radius:4px}
+.status-strip.ok{background:var(--status-ok)}
+.status-strip.warn{background:var(--status-warn)}
+.status-strip.late{background:var(--status-late)}
+.status-strip.done{background:var(--status-done)}
+.status-strip.late.pulse{animation:pulse-glow 1.8s ease-in-out infinite}
+@keyframes pulse-glow{0%,100%{box-shadow:0 0 0 0 rgba(255,92,92,.5)}50%{box-shadow:0 0 8px 2px rgba(255,92,92,.5)}}
+@media (prefers-reduced-motion:reduce){.status-strip.pulse{animation:none}}
+.cell-employee .name{font-weight:700;font-size:14.5px}
+.cell-employee .code{font-family:var(--font-data);font-size:12px;color:var(--text-muted);margin-top:2px}
+.cell-line .tag{display:inline-block;font-size:11.5px;padding:3px 9px;border-radius:999px;background:var(--bg-elevated);color:var(--text-muted);border:1px solid var(--border)}
+.cell-line .stage{font-size:12px;color:var(--text-faint);margin-top:5px}
+.cell-task{font-size:13.5px;color:var(--text-primary);line-height:1.5}
+.cell-task .supervisor{font-size:12px;color:var(--text-muted);margin-top:5px}
+.cell-time .badge{display:inline-flex;align-items:center;gap:6px;font-family:var(--font-data);font-size:12.5px;padding:5px 10px;border-radius:var(--radius-sm);font-weight:600}
+.badge.ok{color:var(--status-ok);background:var(--status-ok-bg)}
+.badge.warn{color:var(--status-warn);background:var(--status-warn-bg)}
+.badge.late{color:var(--status-late);background:var(--status-late-bg)}
+.badge.done{color:var(--status-done);background:var(--status-done-bg)}
+.cell-time .exact{font-size:11px;color:var(--text-faint);margin-top:5px}
+.cell-mode{font-size:12px;color:var(--text-muted)}
+.cell-actions{display:flex;gap:6px}
+.empty-state{padding:60px 20px;text-align:center;color:var(--text-muted)}
+.empty-state h3{color:var(--text-primary);margin-bottom:6px}
+.empty-state p{font-size:13.5px}
+.modal-overlay{position:fixed;inset:0;background:rgba(10,12,15,.72);display:flex;align-items:flex-start;justify-content:center;padding:40px 16px;z-index:50;overflow-y:auto}
+.modal-overlay[hidden]{display:none}
+.modal{background:var(--bg-panel);border:1px solid var(--border-soft);border-radius:var(--radius-lg);width:100%;max-width:560px;box-shadow:var(--shadow-panel)}
+.modal-header{display:flex;align-items:center;justify-content:space-between;padding:20px 24px;border-bottom:1px solid var(--border-soft)}
+.modal-header h2{font-size:16.5px;margin:0}
+.modal-body{padding:22px 24px;display:grid;gap:16px}
+.modal-footer{padding:18px 24px 22px;display:flex;justify-content:flex-end;gap:10px;border-top:1px solid var(--border-soft)}
+.form-row{display:grid;gap:6px}
+.form-row-2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+label{font-size:12.5px;color:var(--text-muted);font-weight:600}
+input[type=text],input[type=number],input[type=datetime-local],textarea,select{font-family:var(--font-display);background:var(--bg-elevated);border:1px solid var(--border);color:var(--text-primary);padding:10px 12px;border-radius:var(--radius-sm);font-size:14px;width:100%}
+input:focus,textarea:focus,select:focus{outline:none;border-color:var(--accent)}
+textarea{resize:vertical;min-height:64px}
+.mode-toggle{display:flex;gap:8px;background:var(--bg-elevated);border-radius:var(--radius-sm);padding:4px;border:1px solid var(--border)}
+.mode-toggle button{flex:1;padding:8px 10px;border-radius:5px;border:none;background:transparent;color:var(--text-muted);font-family:var(--font-display);font-weight:700;font-size:13px;cursor:pointer}
+.mode-toggle button.active{background:var(--accent);color:#16181c}
+.recurrence-row{display:grid;grid-template-columns:90px 1fr;gap:10px}
+.hint{font-size:11.5px;color:var(--text-faint)}
+.toast-stack{position:fixed;bottom:20px;inset-inline-end:20px;display:grid;gap:10px;z-index:80}
+.toast{background:var(--bg-elevated);border:1px solid var(--border);border-inline-start:4px solid var(--accent);color:var(--text-primary);padding:12px 16px;border-radius:var(--radius-sm);font-size:13.5px;box-shadow:var(--shadow-panel);min-width:220px;animation:toast-in .2s ease}
+.toast.success{border-inline-start-color:var(--status-ok)}
+.toast.error{border-inline-start-color:var(--status-late)}
+@keyframes toast-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@media (max-width:860px){.board-header{display:none}.task-row{grid-template-columns:6px 1fr;grid-template-areas:"strip employee" "strip line" "strip task" "strip time" "strip actions";row-gap:8px;padding:16px}.status-strip{grid-area:strip}.cell-employee{grid-area:employee}.cell-line{grid-area:line}.cell-task{grid-area:task}.cell-time{grid-area:time}.cell-mode{display:none}.cell-actions{grid-area:actions;justify-content:flex-start}.stats-strip{grid-template-columns:repeat(2,1fr)}.form-row-2{grid-template-columns:1fr}}
+</style>
 </head>
 <body>
 
@@ -31,22 +121,10 @@
   </div>
 
   <div class="stats-strip">
-    <div class="stat-card late">
-      <div class="stat-num" id="statLate">0</div>
-      <div class="stat-label">متأخرة</div>
-    </div>
-    <div class="stat-card warn">
-      <div class="stat-num" id="statWarn">0</div>
-      <div class="stat-label">قربت تستحق</div>
-    </div>
-    <div class="stat-card ok">
-      <div class="stat-num" id="statOk">0</div>
-      <div class="stat-label">في الموعد</div>
-    </div>
-    <div class="stat-card total">
-      <div class="stat-num" id="statTotal">0</div>
-      <div class="stat-label">إجمالي المهام الشغالة</div>
-    </div>
+    <div class="stat-card late"><div class="stat-num" id="statLate">0</div><div class="stat-label">متأخرة</div></div>
+    <div class="stat-card warn"><div class="stat-num" id="statWarn">0</div><div class="stat-label">قربت تستحق</div></div>
+    <div class="stat-card ok"><div class="stat-num" id="statOk">0</div><div class="stat-label">في الموعد</div></div>
+    <div class="stat-card total"><div class="stat-num" id="statTotal">0</div><div class="stat-label">إجمالي المهام الشغالة</div></div>
   </div>
 
   <div class="filters">
@@ -70,13 +148,7 @@
 
   <div class="board-panel">
     <div class="board-header">
-      <div></div>
-      <div>الموظف</div>
-      <div>الخط / المرحلة</div>
-      <div>التاسك</div>
-      <div>المشرف</div>
-      <div>الموعد</div>
-      <div></div>
+      <div></div><div>الموظف</div><div>الخط / المرحلة</div><div>التاسك</div><div>المشرف</div><div>الموعد</div><div></div>
     </div>
     <div id="taskList"></div>
     <div class="empty-state" id="emptyState" hidden>
@@ -95,7 +167,6 @@
     </div>
     <form id="taskForm">
       <div class="modal-body">
-
         <div class="form-row-2">
           <div class="form-row">
             <label for="f_employee_name">اسم الموظف *</label>
@@ -107,7 +178,6 @@
             <input type="text" id="f_employee_code">
           </div>
         </div>
-
         <div class="form-row-2">
           <div class="form-row">
             <label for="f_line">الخط</label>
@@ -120,18 +190,15 @@
             <datalist id="dl_stages"></datalist>
           </div>
         </div>
-
         <div class="form-row">
           <label for="f_task">التاسك المطلوب *</label>
           <textarea id="f_task" required placeholder="وصف التاسك المطلوب من الموظف..."></textarea>
         </div>
-
         <div class="form-row">
           <label for="f_supervisor">اسم المشرف</label>
           <input type="text" id="f_supervisor" list="dl_supervisors">
           <datalist id="dl_supervisors"></datalist>
         </div>
-
         <div class="form-row">
           <label>معاد المراجعة</label>
           <div class="mode-toggle">
@@ -139,12 +206,10 @@
             <button type="button" id="modeRecurringBtn">تكرار دوري</button>
           </div>
         </div>
-
         <div class="form-row" id="onceRow">
           <label for="f_review_at">تاريخ ووقت المراجعة *</label>
           <input type="datetime-local" id="f_review_at">
         </div>
-
         <div class="form-row" id="recurringRow" hidden>
           <label>كل</label>
           <div class="recurrence-row">
@@ -162,12 +227,10 @@
           </div>
           <div class="hint">بعد كل مراجعة، هيتحسب الموعد الجاي تلقائياً حسب التكرار</div>
         </div>
-
         <div class="form-row">
           <label for="f_notes">ملاحظات</label>
           <textarea id="f_notes" placeholder="أي ملاحظات إضافية..."></textarea>
         </div>
-
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-ghost" id="cancelModalBtn">إلغاء</button>
@@ -180,7 +243,420 @@
 <div class="toast-stack" id="toastStack"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/config.js"></script>
-<script src="js/app.js"></script>
+<script>
+const SUPABASE_URL = 'https://tzjegripbztrqdfvretb.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_E2ZLXk6cHRevtZZY5LWlmA_-LSpNFYJ';
+
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let currentUser = null;
+let tasks = [];
+let editingTaskId = null;
+let notifiedKeys = new Set(JSON.parse(localStorage.getItem('notifiedKeys') || '[]'));
+
+const REFRESH_INTERVAL_MS = 30 * 1000;
+const CHECK_NOTIFY_INTERVAL_MS = 60 * 1000;
+
+(async function init() {
+  const { data } = await supabase.auth.getSession();
+  if (!data.session) {
+    window.location.href = 'index.html';
+    return;
+  }
+  currentUser = data.session.user;
+  document.getElementById('userEmailLabel').textContent = currentUser.email || 'أدمن';
+
+  bindUI();
+  restoreNotifyState();
+  await loadTasks();
+  setInterval(refreshView, REFRESH_INTERVAL_MS);
+  setInterval(checkDueNotifications, CHECK_NOTIFY_INTERVAL_MS);
+})();
+
+const UNIT_MS = { minutes: 60*1000, hours: 60*60*1000, days: 24*60*60*1000, weeks: 7*24*60*60*1000 };
+
+function intervalMs(task) {
+  if (task.review_mode !== 'recurring' || !task.recurrence_value || !task.recurrence_unit) return null;
+  return task.recurrence_value * UNIT_MS[task.recurrence_unit];
+}
+
+function warnWindowMs(task) {
+  const iv = intervalMs(task);
+  if (iv) return Math.min(Math.max(iv * 0.25, 5*60*1000), 3*60*60*1000);
+  return 60*60*1000;
+}
+
+function computeStatus(task) {
+  if (task.status === 'done') return { key: 'done', label: 'منتهية' };
+  if (task.status === 'paused') return { key: 'done', label: 'متوقفة' };
+  const now = Date.now();
+  const due = new Date(task.review_at).getTime();
+  const diff = due - now;
+  if (diff <= 0) return { key: 'late', label: 'متأخرة', diff };
+  if (diff <= warnWindowMs(task)) return { key: 'warn', label: 'قربت تستحق', diff };
+  return { key: 'ok', label: 'في الموعد', diff };
+}
+
+function formatRelative(diffMs) {
+  const abs = Math.abs(diffMs);
+  const mins = Math.round(abs / 60000);
+  const hrs = Math.round(abs / 3600000);
+  const days = Math.round(abs / 86400000);
+  let text;
+  if (mins < 60) text = `${mins} د`;
+  else if (hrs < 24) text = `${hrs} س`;
+  else text = `${days} يوم`;
+  return diffMs <= 0 ? `متأخرة بـ ${text}` : `متبقي ${text}`;
+}
+
+function formatExact(iso) {
+  const d = new Date(iso);
+  return d.toLocaleString('ar-EG', { dateStyle: 'medium', timeStyle: 'short' });
+}
+
+async function loadTasks() {
+  const { data, error } = await supabase.from('tasks').select('*').neq('status', 'done').order('review_at', { ascending: true });
+  if (error) { toast('حصل خطأ في تحميل المهام: ' + error.message, 'error'); return; }
+  tasks = data || [];
+  populateFilterOptions();
+  refreshView();
+}
+
+function refreshView() { renderStats(); renderTaskList(); }
+
+function renderStats() {
+  let late = 0, warn = 0, ok = 0;
+  tasks.forEach(t => {
+    const s = computeStatus(t);
+    if (s.key === 'late') late++;
+    else if (s.key === 'warn') warn++;
+    else if (s.key === 'ok') ok++;
+  });
+  document.getElementById('statLate').textContent = late;
+  document.getElementById('statWarn').textContent = warn;
+  document.getElementById('statOk').textContent = ok;
+  document.getElementById('statTotal').textContent = tasks.length;
+}
+
+function populateFilterOptions() {
+  fillDistinct('filterLine', tasks.map(t => t.line));
+  fillDistinct('filterStage', tasks.map(t => t.stage));
+  fillDistinct('filterSupervisor', tasks.map(t => t.supervisor_name));
+  fillDatalist('dl_lines', tasks.map(t => t.line));
+  fillDatalist('dl_stages', tasks.map(t => t.stage));
+  fillDatalist('dl_supervisors', tasks.map(t => t.supervisor_name));
+  fillDatalist('dl_employees', tasks.map(t => t.employee_name));
+}
+
+function fillDistinct(selectId, values) {
+  const select = document.getElementById(selectId);
+  const current = select.value;
+  const unique = [...new Set(values.filter(Boolean))].sort();
+  const placeholder = select.options[0];
+  select.innerHTML = '';
+  select.appendChild(placeholder);
+  unique.forEach(v => {
+    const opt = document.createElement('option');
+    opt.value = v; opt.textContent = v;
+    select.appendChild(opt);
+  });
+  select.value = unique.includes(current) ? current : '';
+}
+
+function fillDatalist(dlId, values) {
+  const dl = document.getElementById(dlId);
+  const unique = [...new Set(values.filter(Boolean))].sort();
+  dl.innerHTML = '';
+  unique.forEach(v => {
+    const opt = document.createElement('option');
+    opt.value = v;
+    dl.appendChild(opt);
+  });
+}
+
+function getFilteredSortedTasks() {
+  const search = document.getElementById('searchInput').value.trim().toLowerCase();
+  const fLine = document.getElementById('filterLine').value;
+  const fStage = document.getElementById('filterStage').value;
+  const fSup = document.getElementById('filterSupervisor').value;
+  const fStatus = document.getElementById('filterStatus').value;
+  const sortBy = document.getElementById('sortBy').value;
+
+  let list = tasks.filter(t => {
+    if (fLine && t.line !== fLine) return false;
+    if (fStage && t.stage !== fStage) return false;
+    if (fSup && t.supervisor_name !== fSup) return false;
+    if (fStatus && computeStatus(t).key !== fStatus) return false;
+    if (search) {
+      const hay = `${t.employee_name} ${t.employee_code || ''} ${t.task_description}`.toLowerCase();
+      if (!hay.includes(search)) return false;
+    }
+    return true;
+  });
+
+  list.sort((a, b) => {
+    if (sortBy === 'review_at_asc') return new Date(a.review_at) - new Date(b.review_at);
+    if (sortBy === 'review_at_desc') return new Date(b.review_at) - new Date(a.review_at);
+    if (sortBy === 'created_desc') return new Date(b.created_at) - new Date(a.created_at);
+    return 0;
+  });
+
+  return list;
+}
+
+function renderTaskList() {
+  const container = document.getElementById('taskList');
+  const empty = document.getElementById('emptyState');
+  const list = getFilteredSortedTasks();
+
+  if (list.length === 0) {
+    container.innerHTML = '';
+    empty.hidden = false;
+    return;
+  }
+  empty.hidden = true;
+  container.innerHTML = list.map(t => rowTemplate(t)).join('');
+
+  list.forEach(t => {
+    document.getElementById(`review-${t.id}`)?.addEventListener('click', () => markReviewed(t.id));
+    document.getElementById(`edit-${t.id}`)?.addEventListener('click', () => openModal(t));
+    document.getElementById(`del-${t.id}`)?.addEventListener('click', () => deleteTask(t.id));
+  });
+}
+
+function rowTemplate(t) {
+  const status = computeStatus(t);
+  const pulse = status.key === 'late' ? 'pulse' : '';
+  const modeLabel = t.review_mode === 'recurring' ? `كل ${t.recurrence_value} ${unitLabel(t.recurrence_unit)}` : 'مرة واحدة';
+
+  return `
+  <div class="task-row">
+    <div class="status-strip ${status.key} ${pulse}"></div>
+    <div class="cell-employee">
+      <div class="name">${escapeHtml(t.employee_name)}</div>
+      ${t.employee_code ? `<div class="code">#${escapeHtml(t.employee_code)}</div>` : ''}
+    </div>
+    <div class="cell-line">
+      ${t.line ? `<span class="tag">${escapeHtml(t.line)}</span>` : ''}
+      ${t.stage ? `<div class="stage">${escapeHtml(t.stage)}</div>` : ''}
+    </div>
+    <div class="cell-task">
+      ${escapeHtml(t.task_description)}
+      ${t.supervisor_name ? `<div class="supervisor">👤 ${escapeHtml(t.supervisor_name)}</div>` : ''}
+    </div>
+    <div class="cell-mode">${modeLabel}</div>
+    <div class="cell-time">
+      <span class="badge ${status.key}">${formatRelative(status.diff)}</span>
+      <div class="exact">${formatExact(t.review_at)}</div>
+    </div>
+    <div class="cell-actions">
+      <button class="btn btn-sm btn-primary" id="review-${t.id}">تمت المراجعة</button>
+      <button class="icon-btn" id="edit-${t.id}" title="تعديل">✎</button>
+      <button class="icon-btn" id="del-${t.id}" title="حذف">🗑</button>
+    </div>
+  </div>`;
+}
+
+function unitLabel(unit) { return { minutes: 'دقيقة', hours: 'ساعة', days: 'يوم', weeks: 'أسبوع' }[unit] || unit; }
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return str.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function bindFilterEvents() {
+  ['searchInput', 'filterLine', 'filterStage', 'filterSupervisor', 'filterStatus', 'sortBy'].forEach(id => {
+    const el = document.getElementById(id);
+    el.addEventListener('input', renderTaskList);
+    el.addEventListener('change', renderTaskList);
+  });
+}
+
+function bindUI() {
+  document.getElementById('addTaskBtn').addEventListener('click', () => openModal(null));
+  document.getElementById('closeModalBtn').addEventListener('click', closeModal);
+  document.getElementById('cancelModalBtn').addEventListener('click', closeModal);
+  document.getElementById('taskModal').addEventListener('click', (e) => { if (e.target.id === 'taskModal') closeModal(); });
+  document.getElementById('modeOnceBtn').addEventListener('click', () => setMode('once'));
+  document.getElementById('modeRecurringBtn').addEventListener('click', () => setMode('recurring'));
+  document.getElementById('taskForm').addEventListener('submit', saveTask);
+  document.getElementById('logoutBtn').addEventListener('click', logout);
+  document.getElementById('notifyBtn').addEventListener('click', toggleNotifications);
+  bindFilterEvents();
+}
+
+let currentMode = 'once';
+function setMode(mode) {
+  currentMode = mode;
+  document.getElementById('modeOnceBtn').classList.toggle('active', mode === 'once');
+  document.getElementById('modeRecurringBtn').classList.toggle('active', mode === 'recurring');
+  document.getElementById('onceRow').hidden = mode !== 'once';
+  document.getElementById('recurringRow').hidden = mode !== 'recurring';
+}
+
+function openModal(task) {
+  editingTaskId = task ? task.id : null;
+  document.getElementById('modalTitle').textContent = task ? 'تعديل المهمة' : 'مهمة جديدة';
+  document.getElementById('f_employee_name').value = task?.employee_name || '';
+  document.getElementById('f_employee_code').value = task?.employee_code || '';
+  document.getElementById('f_line').value = task?.line || '';
+  document.getElementById('f_stage').value = task?.stage || '';
+  document.getElementById('f_task').value = task?.task_description || '';
+  document.getElementById('f_supervisor').value = task?.supervisor_name || '';
+  document.getElementById('f_notes').value = task?.notes || '';
+
+  const mode = task?.review_mode || 'once';
+  setMode(mode);
+
+  if (mode === 'once') {
+    document.getElementById('f_review_at').value = task ? toLocalInput(task.review_at) : '';
+  } else {
+    document.getElementById('f_recurrence_value').value = task?.recurrence_value || 2;
+    document.getElementById('f_recurrence_unit').value = task?.recurrence_unit || 'hours';
+    document.getElementById('f_first_review_at').value = task ? toLocalInput(task.review_at) : '';
+  }
+  document.getElementById('taskModal').hidden = false;
+}
+
+function closeModal() {
+  document.getElementById('taskModal').hidden = true;
+  document.getElementById('taskForm').reset();
+  editingTaskId = null;
+}
+
+function toLocalInput(iso) {
+  const d = new Date(iso);
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+async function saveTask(e) {
+  e.preventDefault();
+  const saveBtn = document.getElementById('saveTaskBtn');
+  saveBtn.disabled = true;
+  saveBtn.textContent = 'جاري الحفظ...';
+
+  const payload = {
+    employee_name: document.getElementById('f_employee_name').value.trim(),
+    employee_code: document.getElementById('f_employee_code').value.trim() || null,
+    line: document.getElementById('f_line').value.trim() || null,
+    stage: document.getElementById('f_stage').value.trim() || null,
+    task_description: document.getElementById('f_task').value.trim(),
+    supervisor_name: document.getElementById('f_supervisor').value.trim() || null,
+    notes: document.getElementById('f_notes').value.trim() || null,
+    review_mode: currentMode,
+    status: 'active',
+  };
+
+  if (currentMode === 'once') {
+    const val = document.getElementById('f_review_at').value;
+    if (!val) { toast('حدد معاد المراجعة', 'error'); resetSaveBtn(); return; }
+    payload.review_at = new Date(val).toISOString();
+    payload.recurrence_value = null;
+    payload.recurrence_unit = null;
+  } else {
+    const val = document.getElementById('f_first_review_at').value;
+    if (!val) { toast('حدد أول موعد مراجعة', 'error'); resetSaveBtn(); return; }
+    payload.review_at = new Date(val).toISOString();
+    payload.recurrence_value = parseInt(document.getElementById('f_recurrence_value').value, 10);
+    payload.recurrence_unit = document.getElementById('f_recurrence_unit').value;
+  }
+
+  let error;
+  if (editingTaskId) ({ error } = await supabase.from('tasks').update(payload).eq('id', editingTaskId));
+  else ({ error } = await supabase.from('tasks').insert(payload));
+
+  resetSaveBtn();
+  if (error) { toast('حصل خطأ أثناء الحفظ: ' + error.message, 'error'); return; }
+
+  toast(editingTaskId ? 'تم تعديل المهمة' : 'تمت إضافة المهمة', 'success');
+  closeModal();
+  await loadTasks();
+}
+
+function resetSaveBtn() {
+  const saveBtn = document.getElementById('saveTaskBtn');
+  saveBtn.disabled = false;
+  saveBtn.textContent = 'حفظ المهمة';
+}
+
+async function markReviewed(id) {
+  const task = tasks.find(t => t.id === id);
+  if (!task) return;
+  const now = new Date();
+  let update;
+  if (task.review_mode === 'recurring') {
+    const nextDue = new Date(now.getTime() + intervalMs(task));
+    update = { last_reviewed_at: now.toISOString(), review_at: nextDue.toISOString() };
+  } else {
+    update = { last_reviewed_at: now.toISOString(), status: 'done' };
+  }
+  const { error } = await supabase.from('tasks').update(update).eq('id', id);
+  if (error) { toast('حصل خطأ: ' + error.message, 'error'); return; }
+  toast('تم تسجيل المراجعة ✅', 'success');
+  await loadTasks();
+}
+
+async function deleteTask(id) {
+  if (!confirm('متأكد إنك عاوز تحذف المهمة دي؟')) return;
+  const { error } = await supabase.from('tasks').delete().eq('id', id);
+  if (error) { toast('حصل خطأ أثناء الحذف: ' + error.message, 'error'); return; }
+  toast('تم حذف المهمة', 'success');
+  await loadTasks();
+}
+
+async function logout() {
+  await supabase.auth.signOut();
+  window.location.href = 'index.html';
+}
+
+function restoreNotifyState() { updateNotifyLabel(); }
+
+function updateNotifyLabel() {
+  const label = document.getElementById('notifyLabel');
+  if (!('Notification' in window)) {
+    label.textContent = 'الإشعارات غير مدعومة';
+    document.getElementById('notifyBtn').disabled = true;
+    return;
+  }
+  if (Notification.permission === 'granted') label.textContent = 'الإشعارات مفعّلة';
+  else if (Notification.permission === 'denied') label.textContent = 'الإشعارات محظورة من المتصفح';
+  else label.textContent = 'تفعيل الإشعارات';
+}
+
+async function toggleNotifications() {
+  if (!('Notification' in window)) return;
+  if (Notification.permission === 'default') {
+    const perm = await Notification.requestPermission();
+    updateNotifyLabel();
+    if (perm === 'granted') {
+      toast('تم تفعيل الإشعارات 🔔', 'success');
+      new Notification('متابعة تنفيذ المهام', { body: 'هيوصلك تنبيه لما أي تاسك يستحق المراجعة' });
+    }
+  } else updateNotifyLabel();
+}
+
+function checkDueNotifications() {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  tasks.forEach(t => {
+    const status = computeStatus(t);
+    if (status.key !== 'late') return;
+    const key = `${t.id}:${t.review_at}`;
+    if (notifiedKeys.has(key)) return;
+    new Notification('⏰ تاسك مستحق للمراجعة', { body: `${t.employee_name} — ${t.task_description}`, tag: key });
+    notifiedKeys.add(key);
+    localStorage.setItem('notifiedKeys', JSON.stringify([...notifiedKeys]));
+  });
+}
+
+function toast(msg, type = 'default') {
+  const stack = document.getElementById('toastStack');
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  stack.appendChild(el);
+  setTimeout(() => el.remove(), 4000);
+}
+</script>
 </body>
 </html>
