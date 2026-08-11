@@ -98,6 +98,65 @@ textarea{resize:vertical;min-height:64px}
 .toast.error{border-inline-start-color:var(--status-late)}
 @keyframes toast-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 @media (max-width:860px){.board-header{display:none}.task-row{grid-template-columns:6px 1fr;grid-template-areas:"strip employee" "strip line" "strip task" "strip time" "strip actions";row-gap:8px;padding:16px}.status-strip{grid-area:strip}.cell-employee{grid-area:employee}.cell-line{grid-area:line}.cell-task{grid-area:task}.cell-time{grid-area:time}.cell-mode{display:none}.cell-actions{grid-area:actions;justify-content:flex-start}.stats-strip{grid-template-columns:repeat(2,1fr)}.form-row-2{grid-template-columns:1fr}}
+
+.view-tabs{display:flex;gap:8px;margin-bottom:16px}
+.view-tab{font-family:var(--font-display);font-size:13.5px;font-weight:700;padding:9px 16px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--bg-panel);color:var(--text-muted);cursor:pointer}
+.view-tab.active{background:var(--accent);border-color:var(--accent);color:#16181c}
+.view-tab:hover:not(.active){color:var(--text-primary);border-color:var(--text-faint)}
+
+.calendar-panel{background:var(--bg-panel);border:1px solid var(--border-soft);border-radius:var(--radius-lg);box-shadow:var(--shadow-panel);padding:18px 20px;margin-bottom:18px}
+.calendar-toolbar{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+.calendar-nav{display:flex;align-items:center;gap:10px}
+.calendar-title{font-size:15.5px;font-weight:800;margin-inline-start:8px;min-width:130px}
+.calendar-mode-toggle{min-width:220px}
+
+.month-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.month-day-header{text-align:center;font-size:11.5px;color:var(--text-faint);padding:6px 0;text-transform:uppercase;letter-spacing:.4px}
+.month-cell{background:var(--bg-elevated);border:1px solid var(--border-soft);border-radius:var(--radius-sm);min-height:78px;padding:8px;cursor:pointer;display:flex;flex-direction:column;gap:6px;transition:border-color .12s ease,background .12s ease}
+.month-cell:hover{border-color:var(--text-faint)}
+.month-cell.other-month{opacity:.35}
+.month-cell.today{border-color:var(--accent)}
+.month-cell.selected{background:var(--bg-panel-2);border-color:var(--accent)}
+.month-cell-date{font-family:var(--font-data);font-size:12.5px;color:var(--text-muted);font-weight:600}
+.month-cell.today .month-cell-date{color:var(--accent)}
+.month-cell-dots{display:flex;gap:4px;flex-wrap:wrap}
+.month-dot{width:7px;height:7px;border-radius:50%}
+.month-dot.late{background:var(--status-late)}
+.month-dot.warn{background:var(--status-warn)}
+.month-dot.ok{background:var(--status-ok)}
+.month-cell-count{font-size:10.5px;color:var(--text-faint);margin-top:auto}
+
+.week-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}
+.week-col{background:var(--bg-elevated);border:1px solid var(--border-soft);border-radius:var(--radius-sm);padding:10px;min-height:160px;cursor:pointer;display:flex;flex-direction:column;gap:8px}
+.week-col:hover{border-color:var(--text-faint)}
+.week-col.today{border-color:var(--accent)}
+.week-col.selected{background:var(--bg-panel-2);border-color:var(--accent)}
+.week-col-header{font-size:11.5px;color:var(--text-muted);text-align:center;font-weight:700}
+.week-col-date{font-family:var(--font-data);font-size:15px;text-align:center;font-weight:700}
+.week-col.today .week-col-date{color:var(--accent)}
+.week-task-chip{font-size:10.5px;padding:4px 6px;border-radius:4px;background:var(--bg-panel-2);border-inline-start:3px solid var(--status-ok)}
+.week-task-chip.late{border-inline-start-color:var(--status-late)}
+.week-task-chip.warn{border-inline-start-color:var(--status-warn)}
+.week-task-chip.done{border-inline-start-color:var(--status-done);opacity:.6}
+.week-task-more{font-size:10px;color:var(--text-faint);text-align:center}
+
+.day-single{text-align:center;padding:8px 0 4px}
+.day-single-date{font-family:var(--font-data);font-size:26px;font-weight:800}
+.day-single-label{font-size:12.5px;color:var(--text-muted);margin-top:2px}
+
+.calendar-day-panel-header{padding:16px 20px 4px}
+.calendar-day-panel-header h3{margin:0;font-size:14.5px}
+.calendar-day-panel{margin-top:0}
+
+@media (max-width:860px){
+  .month-grid{gap:4px}
+  .month-cell{min-height:56px;padding:5px}
+  .month-cell-dots{gap:3px}
+  .week-grid{grid-template-columns:1fr;gap:6px}
+  .calendar-mode-toggle{min-width:0;width:100%}
+  .calendar-toolbar{flex-direction:column;align-items:stretch}
+}
+
 </style>
 </head>
 <body>
@@ -128,6 +187,12 @@ textarea{resize:vertical;min-height:64px}
     <div class="stat-card total"><div class="stat-num" id="statTotal">0</div><div class="stat-label">إجمالي المهام الشغالة</div></div>
   </div>
 
+  <div class="view-tabs">
+    <button class="view-tab active" id="viewTabList">📋 قائمة المهام</button>
+    <button class="view-tab" id="viewTabCalendar">📅 التقويم</button>
+  </div>
+
+  <div id="listView">
   <div class="filters">
     <input type="text" class="search-box" id="searchInput" placeholder="بحث بالاسم أو الكود أو التاسك...">
     <select id="filterLine"><option value="">كل الخطوط</option></select>
@@ -157,8 +222,40 @@ textarea{resize:vertical;min-height:64px}
       <p>دوس على "مهمة جديدة" عشان تبدأ تتابع أول تاسك</p>
     </div>
   </div>
+  </div>
+
+  <div id="calendarView" hidden>
+    <div class="calendar-panel">
+      <div class="calendar-toolbar">
+        <div class="calendar-nav">
+          <button class="icon-btn" id="calPrevBtn" title="السابق">‹</button>
+          <button class="btn btn-ghost btn-sm" id="calTodayBtn">اليوم</button>
+          <button class="icon-btn" id="calNextBtn" title="التالي">›</button>
+          <span class="calendar-title" id="calendarTitle">—</span>
+        </div>
+        <div class="mode-toggle calendar-mode-toggle">
+          <button type="button" id="calModeMonthBtn" class="active">شهري</button>
+          <button type="button" id="calModeWeekBtn">أسبوعي</button>
+          <button type="button" id="calModeDayBtn">يومي</button>
+        </div>
+      </div>
+      <div id="calendarBody"></div>
+    </div>
+
+    <div class="board-panel calendar-day-panel" id="calendarDayPanel">
+      <div class="calendar-day-panel-header">
+        <h3 id="calendarDayTitle">مهام اليوم</h3>
+      </div>
+      <div id="calendarDayList"></div>
+      <div class="empty-state" id="calendarDayEmpty" hidden>
+        <h3>مفيش مهام في اليوم ده</h3>
+        <p>اختاري يوم تاني أو أضيفي مهمة جديدة</p>
+      </div>
+    </div>
+  </div>
 
 </div>
+
 
 <div class="modal-overlay" id="taskModal" hidden>
   <div class="modal">
@@ -319,7 +416,7 @@ async function loadTasks() {
   refreshView();
 }
 
-function refreshView() { renderStats(); renderTaskList(); }
+function refreshView() { renderStats(); renderTaskList(); renderCalendar(); }
 
 function renderStats() {
   let late = 0, warn = 0, ok = 0;
@@ -413,12 +510,6 @@ function renderTaskList() {
   }
   empty.hidden = true;
   container.innerHTML = list.map(t => rowTemplate(t)).join('');
-
-  list.forEach(t => {
-    document.getElementById(`review-${t.id}`)?.addEventListener('click', () => markReviewed(t.id));
-    document.getElementById(`edit-${t.id}`)?.addEventListener('click', () => openModal(t));
-    document.getElementById(`del-${t.id}`)?.addEventListener('click', () => deleteTask(t.id));
-  });
 }
 
 function rowTemplate(t) {
@@ -447,9 +538,9 @@ function rowTemplate(t) {
       <div class="exact">${formatExact(t.review_at)}</div>
     </div>
     <div class="cell-actions">
-      <button class="btn btn-sm btn-primary" id="review-${t.id}">تمت المراجعة</button>
-      <button class="icon-btn" id="edit-${t.id}" title="تعديل">✎</button>
-      <button class="icon-btn" id="del-${t.id}" title="حذف">🗑</button>
+      <button class="btn btn-sm btn-primary" data-action="review" data-id="${t.id}">تمت المراجعة</button>
+      <button class="icon-btn" data-action="edit" data-id="${t.id}" title="تعديل">✎</button>
+      <button class="icon-btn" data-action="delete" data-id="${t.id}" title="حذف">🗑</button>
     </div>
   </div>`;
 }
@@ -480,6 +571,203 @@ function bindUI() {
   document.getElementById('logoutBtn').addEventListener('click', logout);
   document.getElementById('notifyBtn').addEventListener('click', toggleNotifications);
   bindFilterEvents();
+
+  document.getElementById('viewTabList').addEventListener('click', () => switchView('list'));
+  document.getElementById('viewTabCalendar').addEventListener('click', () => switchView('calendar'));
+  document.getElementById('calPrevBtn').addEventListener('click', () => navigateCalendar(-1));
+  document.getElementById('calNextBtn').addEventListener('click', () => navigateCalendar(1));
+  document.getElementById('calTodayBtn').addEventListener('click', () => { calendarDate = new Date(); selectedCalendarDate = new Date(); renderCalendar(); });
+  document.getElementById('calModeMonthBtn').addEventListener('click', () => setCalendarMode('month'));
+  document.getElementById('calModeWeekBtn').addEventListener('click', () => setCalendarMode('week'));
+  document.getElementById('calModeDayBtn').addEventListener('click', () => setCalendarMode('day'));
+
+  bindTaskRowActions('taskList');
+  bindTaskRowActions('calendarDayList');
+}
+
+function bindTaskRowActions(containerId) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  container.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    const id = btn.dataset.id;
+    const action = btn.dataset.action;
+    if (action === 'review') markReviewed(id);
+    else if (action === 'edit') {
+      const t = tasks.find(x => x.id === id);
+      if (t) openModal(t);
+    } else if (action === 'delete') deleteTask(id);
+  });
+}
+
+// ------------------------------------------------------------
+// التقويم (Calendar)
+// ------------------------------------------------------------
+let currentView = 'list';
+let calendarMode = 'month';
+let calendarDate = new Date();
+let selectedCalendarDate = new Date();
+
+const AR_MONTHS = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+const AR_DAYS_SHORT = ['أحد','اثنين','ثلاثاء','أربعاء','خميس','جمعة','سبت'];
+const AR_DAYS_FULL = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+
+function switchView(view) {
+  currentView = view;
+  document.getElementById('viewTabList').classList.toggle('active', view === 'list');
+  document.getElementById('viewTabCalendar').classList.toggle('active', view === 'calendar');
+  document.getElementById('listView').hidden = view !== 'list';
+  document.getElementById('calendarView').hidden = view !== 'calendar';
+  if (view === 'calendar') renderCalendar();
+}
+
+function setCalendarMode(mode) {
+  calendarMode = mode;
+  document.getElementById('calModeMonthBtn').classList.toggle('active', mode === 'month');
+  document.getElementById('calModeWeekBtn').classList.toggle('active', mode === 'week');
+  document.getElementById('calModeDayBtn').classList.toggle('active', mode === 'day');
+  renderCalendar();
+}
+
+function navigateCalendar(dir) {
+  const d = new Date(calendarDate);
+  if (calendarMode === 'month') d.setMonth(d.getMonth() + dir);
+  else if (calendarMode === 'week') d.setDate(d.getDate() + dir * 7);
+  else d.setDate(d.getDate() + dir);
+  calendarDate = d;
+  if (calendarMode === 'day') selectedCalendarDate = new Date(d);
+  renderCalendar();
+}
+
+function dateKey(d) {
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+function isSameDay(a, b) { return dateKey(a) === dateKey(b); }
+
+function getTasksForDay(d) {
+  const key = dateKey(d);
+  return tasks.filter(t => dateKey(new Date(t.review_at)) === key)
+    .sort((a, b) => new Date(a.review_at) - new Date(b.review_at));
+}
+
+function startOfWeek(d) {
+  const res = new Date(d);
+  res.setDate(res.getDate() - res.getDay());
+  res.setHours(0, 0, 0, 0);
+  return res;
+}
+
+function renderCalendar() {
+  if (currentView !== 'calendar') return;
+  const title = document.getElementById('calendarTitle');
+  const body = document.getElementById('calendarBody');
+
+  if (calendarMode === 'month') {
+    title.textContent = `${AR_MONTHS[calendarDate.getMonth()]} ${calendarDate.getFullYear()}`;
+    body.innerHTML = renderMonthGrid();
+  } else if (calendarMode === 'week') {
+    const start = startOfWeek(calendarDate);
+    const end = new Date(start); end.setDate(end.getDate() + 6);
+    title.textContent = `${start.getDate()} ${AR_MONTHS[start.getMonth()]} — ${end.getDate()} ${AR_MONTHS[end.getMonth()]}`;
+    body.innerHTML = renderWeekGrid();
+  } else {
+    title.textContent = `${AR_DAYS_FULL[calendarDate.getDay()]}، ${calendarDate.getDate()} ${AR_MONTHS[calendarDate.getMonth()]} ${calendarDate.getFullYear()}`;
+    selectedCalendarDate = new Date(calendarDate);
+    body.innerHTML = `<div class="day-single"><div class="day-single-date">${calendarDate.getDate()}</div><div class="day-single-label">${AR_DAYS_FULL[calendarDate.getDay()]}</div></div>`;
+  }
+
+  bindCalendarCellEvents();
+  renderCalendarDayPanel(selectedCalendarDate);
+}
+
+function renderMonthGrid() {
+  const year = calendarDate.getFullYear();
+  const month = calendarDate.getMonth();
+  const firstOfMonth = new Date(year, month, 1);
+  const gridStart = startOfWeek(firstOfMonth);
+  const today = new Date();
+
+  let html = AR_DAYS_SHORT.map(d => `<div class="month-day-header">${d}</div>`).join('');
+
+  for (let i = 0; i < 42; i++) {
+    const cellDate = new Date(gridStart);
+    cellDate.setDate(gridStart.getDate() + i);
+    const dayTasks = getTasksForDay(cellDate);
+    const statuses = dayTasks.map(t => computeStatus(t).key);
+    const dots = [...new Set(statuses)].filter(s => s !== 'done').slice(0, 3)
+      .map(s => `<span class="month-dot ${s}"></span>`).join('');
+
+    const classes = ['month-cell'];
+    if (cellDate.getMonth() !== month) classes.push('other-month');
+    if (isSameDay(cellDate, today)) classes.push('today');
+    if (isSameDay(cellDate, selectedCalendarDate)) classes.push('selected');
+
+    html += `<div class="${classes.join(' ')}" data-date="${dateKey(cellDate)}">
+      <div class="month-cell-date">${cellDate.getDate()}</div>
+      <div class="month-cell-dots">${dots}</div>
+      ${dayTasks.length ? `<div class="month-cell-count">${dayTasks.length} مهمة</div>` : ''}
+    </div>`;
+  }
+  return html;
+}
+
+function renderWeekGrid() {
+  const start = startOfWeek(calendarDate);
+  const today = new Date();
+  let html = '';
+
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
+    const dayTasks = getTasksForDay(d);
+    const classes = ['week-col'];
+    if (isSameDay(d, today)) classes.push('today');
+    if (isSameDay(d, selectedCalendarDate)) classes.push('selected');
+
+    const chips = dayTasks.slice(0, 4).map(t => {
+      const s = computeStatus(t).key;
+      return `<div class="week-task-chip ${s}">${escapeHtml(t.employee_name)} — ${escapeHtml(t.task_description).slice(0, 22)}${t.task_description.length > 22 ? '…' : ''}</div>`;
+    }).join('');
+    const more = dayTasks.length > 4 ? `<div class="week-task-more">+${dayTasks.length - 4} كمان</div>` : '';
+
+    html += `<div class="${classes.join(' ')}" data-date="${dateKey(d)}">
+      <div class="week-col-header">${AR_DAYS_SHORT[d.getDay()]}</div>
+      <div class="week-col-date">${d.getDate()}</div>
+      ${chips}${more}
+    </div>`;
+  }
+  return html;
+}
+
+function bindCalendarCellEvents() {
+  document.querySelectorAll('[data-date]').forEach(el => {
+    el.addEventListener('click', () => {
+      const [y, m, day] = el.dataset.date.split('-').map(Number);
+      selectedCalendarDate = new Date(y, m - 1, day);
+      if (calendarMode !== 'day') renderCalendar();
+      else renderCalendarDayPanel(selectedCalendarDate);
+    });
+  });
+}
+
+function renderCalendarDayPanel(d) {
+  const list = getTasksForDay(d);
+  const container = document.getElementById('calendarDayList');
+  const empty = document.getElementById('calendarDayEmpty');
+  const title = document.getElementById('calendarDayTitle');
+
+  title.textContent = `مهام يوم ${d.getDate()} ${AR_MONTHS[d.getMonth()]} (${AR_DAYS_FULL[d.getDay()]})`;
+
+  if (list.length === 0) {
+    container.innerHTML = '';
+    empty.hidden = false;
+    return;
+  }
+  empty.hidden = true;
+  container.innerHTML = list.map(t => rowTemplate(t)).join('');
 }
 
 let currentMode = 'once';
@@ -623,14 +911,24 @@ function updateNotifyLabel() {
 
 async function toggleNotifications() {
   if (!('Notification' in window)) return;
+
+  if (Notification.permission === 'denied') {
+    toast('الإشعارات محظورة من إعدادات المتصفح — لازم تفعّليها يدوي من إعدادات الموقع', 'error');
+    return;
+  }
+
   if (Notification.permission === 'default') {
     const perm = await Notification.requestPermission();
     updateNotifyLabel();
-    if (perm === 'granted') {
-      toast('تم تفعيل الإشعارات 🔔', 'success');
-      new Notification('متابعة تنفيذ المهام', { body: 'هيوصلك تنبيه لما أي تاسك يستحق المراجعة' });
-    }
-  } else updateNotifyLabel();
+    if (perm !== 'granted') return;
+  }
+
+  // دايماً ابعتي إشعار تجريبي فوري عشان تحسي إن الزرار شغال فعلاً
+  toast('الإشعارات مفعّلة 🔔', 'success');
+  new Notification('متابعة تنفيذ المهام', {
+    body: 'ده تنبيه تجريبي — لما أي تاسك يستحق المراجعة هيوصلك تنبيه زي ده تلقائياً',
+  });
+  updateNotifyLabel();
 }
 
 function checkDueNotifications() {
