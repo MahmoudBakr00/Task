@@ -6,4 +6,4 @@ Config · JS
 // ============================================================
 const SUPABASE_URL = 'https://tzjegripbztrqdfvretb.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_E2ZLXk6cHRevtZZY5LWlmA_-LSpNFYJ';
- 
+  
