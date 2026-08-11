@@ -112,35 +112,42 @@ textarea{resize:vertical;min-height:64px}
 
 .month-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
 .month-day-header{text-align:center;font-size:11.5px;color:var(--text-faint);padding:6px 0;text-transform:uppercase;letter-spacing:.4px}
-.month-cell{background:var(--bg-elevated);border:1px solid var(--border-soft);border-radius:var(--radius-sm);min-height:104px;padding:8px;cursor:pointer;display:flex;flex-direction:column;gap:5px;transition:border-color .12s ease,background .12s ease;overflow:hidden}
+.month-cell{background:var(--bg-elevated);border:1px solid var(--border-soft);border-radius:var(--radius-sm);aspect-ratio:1/1;min-height:64px;max-height:88px;padding:6px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;transition:border-color .12s ease,background .12s ease}
 .month-cell:hover{border-color:var(--text-faint)}
 .month-cell.other-month{opacity:.35}
 .month-cell.today{border-color:var(--accent)}
 .month-cell.selected{background:var(--bg-panel-2);border-color:var(--accent)}
-.month-cell-date{font-family:var(--font-data);font-size:12.5px;color:var(--text-muted);font-weight:600}
+.month-cell-date{font-family:var(--font-data);font-size:13.5px;color:var(--text-muted);font-weight:700}
 .month-cell.today .month-cell-date{color:var(--accent)}
-.month-cell-chips{display:flex;flex-direction:column;gap:3px;overflow:hidden}
-.month-task-chip{font-size:10px;line-height:1.3;padding:3px 5px;border-radius:4px;background:var(--bg-panel-2);border-inline-start:3px solid var(--status-ok);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
-.month-task-chip:hover{background:var(--bg-elevated)}
-.month-task-chip.late{border-inline-start-color:var(--status-late)}
-.month-task-chip.warn{border-inline-start-color:var(--status-warn)}
-.month-task-time{font-family:var(--font-data);color:var(--text-muted);margin-inline-end:3px}
-.month-cell-count{font-size:10px;color:var(--text-faint)}
+.month-cell-dots{display:flex;gap:4px}
+.month-dot{width:7px;height:7px;border-radius:50%}
+.month-dot.late{background:var(--status-late)}
+.month-dot.warn{background:var(--status-warn)}
+.month-dot.ok{background:var(--status-ok)}
+.month-cell-count{font-family:var(--font-data);font-size:9.5px;color:var(--text-faint)}
 
-.week-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}
-.week-col{background:var(--bg-elevated);border:1px solid var(--border-soft);border-radius:var(--radius-sm);padding:10px;min-height:160px;cursor:pointer;display:flex;flex-direction:column;gap:8px}
-.week-col:hover{border-color:var(--text-faint)}
-.week-col.today{border-color:var(--accent)}
-.week-col.selected{background:var(--bg-panel-2);border-color:var(--accent)}
-.week-col-header{font-size:11.5px;color:var(--text-muted);text-align:center;font-weight:700}
-.week-col-date{font-family:var(--font-data);font-size:15px;text-align:center;font-weight:700}
-.week-col.today .week-col-date{color:var(--accent)}
-.week-task-chip{font-size:10.5px;padding:4px 6px;border-radius:4px;background:var(--bg-panel-2);border-inline-start:3px solid var(--status-ok);cursor:pointer}
-.week-task-chip:hover{background:var(--bg-elevated)}
-.week-task-chip.late{border-inline-start-color:var(--status-late)}
-.week-task-chip.warn{border-inline-start-color:var(--status-warn)}
-.week-task-chip.done{border-inline-start-color:var(--status-done);opacity:.6}
-.week-task-more{font-size:10px;color:var(--text-faint);text-align:center}
+.time-grid-wrap{border:1px solid var(--border-soft);border-radius:var(--radius-md);overflow:hidden;background:var(--bg-panel)}
+.time-scroll-body{max-height:560px;overflow-y:auto}
+.time-grid-inner{display:flex;align-items:flex-start}
+.time-gutter{width:54px;flex-shrink:0;border-inline-end:1px solid var(--border-soft)}
+.time-gutter-corner{height:38px}
+.time-gutter-hour{font-size:10px;color:var(--text-faint);text-align:center;padding-top:3px;border-bottom:1px solid var(--border-soft);font-family:var(--font-data);box-sizing:border-box}
+.time-days{flex:1;display:flex;min-width:0}
+.time-day-col-wrap{flex:1;min-width:0;border-inline-start:1px solid var(--border-soft)}
+.time-day-col-wrap:first-child{border-inline-start:none}
+.time-day-header{height:38px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;gap:5px;font-size:11.5px;color:var(--text-muted);font-weight:700;border-bottom:1px solid var(--border-soft);background:var(--bg-panel);position:sticky;top:0;z-index:2;cursor:pointer}
+.time-day-header:hover{color:var(--text-primary)}
+.time-day-header.today{color:var(--accent)}
+.time-day-header-num{font-family:var(--font-data)}
+.time-day-col{position:relative;cursor:pointer}
+.time-hour-line{border-bottom:1px solid var(--border-soft);box-sizing:border-box}
+.time-task-block{position:absolute;inset-inline:3px;height:38px;border-radius:5px;padding:2px 6px;font-size:10px;line-height:1.25;overflow:hidden;cursor:pointer;border-inline-start:3px solid var(--status-ok);background:var(--status-ok-bg);color:var(--text-primary);z-index:1;box-sizing:border-box}
+.time-task-block.late{border-inline-start-color:var(--status-late);background:var(--status-late-bg)}
+.time-task-block.warn{border-inline-start-color:var(--status-warn);background:var(--status-warn-bg)}
+.time-task-block:hover{filter:brightness(.96);z-index:3}
+.time-task-time{font-family:var(--font-data);font-weight:700}
+.time-now-line{position:absolute;inset-inline:0;height:2px;background:var(--status-late);z-index:4;pointer-events:none}
+.time-now-line::before{content:'';position:absolute;inset-inline-start:-4px;top:-3px;width:8px;height:8px;border-radius:50%;background:var(--status-late)}
 
 .day-single{text-align:center;padding:8px 0 4px}
 .day-single-date{font-family:var(--font-data);font-size:26px;font-weight:800}
@@ -152,9 +159,13 @@ textarea{resize:vertical;min-height:64px}
 
 @media (max-width:860px){
   .month-grid{gap:4px}
-  .month-cell{min-height:70px;padding:5px}
-  .month-task-chip{font-size:9px;padding:2px 4px}
-  .week-grid{grid-template-columns:1fr;gap:6px}
+  .month-cell{min-height:44px;max-height:60px;padding:3px}
+  .month-dot{width:5px;height:5px}
+  .time-gutter{width:40px}
+  .time-gutter-hour{font-size:9px}
+  .time-task-block{font-size:9px;height:34px}
+  .time-day-header{font-size:10px;height:32px}
+  .time-gutter-corner{height:32px}
   .calendar-mode-toggle{min-width:0;width:100%}
   .calendar-toolbar{flex-direction:column;align-items:stretch}
 }
@@ -682,16 +693,21 @@ function renderCalendar() {
     const start = startOfWeek(calendarDate);
     const end = new Date(start); end.setDate(end.getDate() + 6);
     title.textContent = `${start.getDate()} ${AR_MONTHS[start.getMonth()]} — ${end.getDate()} ${AR_MONTHS[end.getMonth()]}`;
-    body.innerHTML = renderWeekGrid();
+    const days = Array.from({ length: 7 }, (_, i) => { const d = new Date(start); d.setDate(start.getDate() + i); return d; });
+    body.innerHTML = renderTimeGrid(days);
   } else {
     title.textContent = `${AR_DAYS_FULL[calendarDate.getDay()]}، ${calendarDate.getDate()} ${AR_MONTHS[calendarDate.getMonth()]} ${calendarDate.getFullYear()}`;
     selectedCalendarDate = new Date(calendarDate);
-    body.innerHTML = `<div class="day-single"><div class="day-single-date">${calendarDate.getDate()}</div><div class="day-single-label">${AR_DAYS_FULL[calendarDate.getDay()]}</div></div>`;
+    body.innerHTML = renderTimeGrid([new Date(calendarDate)]);
   }
 
   bindCalendarCellEvents();
   renderCalendarDayPanel(selectedCalendarDate);
+
+  if (calendarMode !== 'month') scrollTimeGridToRelevantHour();
 }
+
+const ROW_H = 52; // ارتفاع كل ساعة بالبكسل
 
 function renderMonthGrid() {
   const year = calendarDate.getFullYear();
@@ -706,15 +722,9 @@ function renderMonthGrid() {
     const cellDate = new Date(gridStart);
     cellDate.setDate(gridStart.getDate() + i);
     const dayTasks = getTasksForDay(cellDate);
-
-    const MAX_CHIPS = 3;
-    const chips = dayTasks.slice(0, MAX_CHIPS).map(t => {
-      const s = computeStatus(t).key;
-      const time = new Date(t.review_at).toLocaleTimeString('ar-EG', { hour: 'numeric', minute: '2-digit' });
-      const label = `${escapeHtml(t.employee_name)} — ${escapeHtml(t.task_description)}`;
-      return `<div class="month-task-chip ${s}" data-id="${t.id}" title="${label}"><span class="month-task-time">${time}</span> ${label}</div>`;
-    }).join('');
-    const more = dayTasks.length > MAX_CHIPS ? `<div class="month-cell-count">+${dayTasks.length - MAX_CHIPS} كمان</div>` : '';
+    const statuses = dayTasks.map(t => computeStatus(t).key);
+    const dots = [...new Set(statuses)].filter(s => s !== 'done').slice(0, 3)
+      .map(s => `<span class="month-dot ${s}"></span>`).join('');
 
     const classes = ['month-cell'];
     if (cellDate.getMonth() !== month) classes.push('other-month');
@@ -723,45 +733,84 @@ function renderMonthGrid() {
 
     html += `<div class="${classes.join(' ')}" data-date="${dateKey(cellDate)}">
       <div class="month-cell-date">${cellDate.getDate()}</div>
-      <div class="month-cell-chips">${chips}</div>
-      ${more}
+      <div class="month-cell-dots">${dots}</div>
+      ${dayTasks.length ? `<div class="month-cell-count">${dayTasks.length}</div>` : ''}
     </div>`;
   }
   return html;
 }
 
-function renderWeekGrid() {
-  const start = startOfWeek(calendarDate);
+// شبكة ساعات حقيقية (زي أوتلوك) — تُستخدم للعرض الأسبوعي واليومي
+function renderTimeGrid(days) {
   const today = new Date();
-  let html = '';
 
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(start);
-    d.setDate(start.getDate() + i);
+  const gutter = `<div class="time-gutter">
+    <div class="time-day-header time-gutter-corner"></div>
+    ${Array.from({ length: 24 }, (_, h) => `<div class="time-gutter-hour" style="height:${ROW_H}px">${String(h).padStart(2,'0')}:00</div>`).join('')}
+  </div>`;
+
+  const columns = days.map(d => {
     const dayTasks = getTasksForDay(d);
-    const classes = ['week-col'];
-    if (isSameDay(d, today)) classes.push('today');
-    if (isSameDay(d, selectedCalendarDate)) classes.push('selected');
+    const isToday = isSameDay(d, today);
+    const headerClasses = ['time-day-header'];
+    if (isToday) headerClasses.push('today');
 
-    const chips = dayTasks.slice(0, 4).map(t => {
+    // منع تداخل المهام اللي في نفس الوقت تقريباً فوق بعض
+    const placed = [];
+    dayTasks.slice().sort((a, b) => new Date(a.review_at) - new Date(b.review_at)).forEach(t => {
+      const dt = new Date(t.review_at);
+      const minutesFromMidnight = dt.getHours() * 60 + dt.getMinutes();
+      let top = (minutesFromMidnight / 60) * ROW_H;
+      const blockH = 40;
+      const lastBottom = placed.length ? placed[placed.length - 1]._bottom : -999;
+      if (top < lastBottom + 4) top = lastBottom + 4;
+      placed.push({ t, top, _bottom: top + blockH });
+    });
+
+    const blocks = placed.map(({ t, top }) => {
       const s = computeStatus(t).key;
-      return `<div class="week-task-chip ${s}" data-id="${t.id}">${escapeHtml(t.employee_name)} — ${escapeHtml(t.task_description).slice(0, 22)}${t.task_description.length > 22 ? '…' : ''}</div>`;
+      const time = new Date(t.review_at).toLocaleTimeString('ar-EG', { hour: 'numeric', minute: '2-digit' });
+      return `<div class="time-task-block ${s}" data-id="${t.id}" style="top:${top}px" title="${escapeHtml(t.employee_name)} — ${escapeHtml(t.task_description)}">
+        <span class="time-task-time">${time}</span> ${escapeHtml(t.employee_name)} — ${escapeHtml(t.task_description)}
+      </div>`;
     }).join('');
-    const more = dayTasks.length > 4 ? `<div class="week-task-more">+${dayTasks.length - 4} كمان</div>` : '';
 
-    html += `<div class="${classes.join(' ')}" data-date="${dateKey(d)}">
-      <div class="week-col-header">${AR_DAYS_SHORT[d.getDay()]}</div>
-      <div class="week-col-date">${d.getDate()}</div>
-      ${chips}${more}
+    const hourLines = Array.from({ length: 24 }, () => `<div class="time-hour-line" style="height:${ROW_H}px"></div>`).join('');
+
+    let nowLine = '';
+    if (isToday) {
+      const mins = today.getHours() * 60 + today.getMinutes();
+      nowLine = `<div class="time-now-line" style="top:${(mins / 60) * ROW_H}px"></div>`;
+    }
+
+    return `<div class="time-day-col-wrap">
+      <div class="${headerClasses.join(' ')}" data-date="${dateKey(d)}">${AR_DAYS_SHORT[d.getDay()]} <span class="time-day-header-num">${d.getDate()}</span></div>
+      <div class="time-day-col" data-date="${dateKey(d)}">${hourLines}${blocks}${nowLine}</div>
     </div>`;
-  }
-  return html;
+  }).join('');
+
+  return `<div class="time-grid-wrap">
+    <div class="time-scroll-body">
+      <div class="time-grid-inner">
+        ${gutter}
+        <div class="time-days">${columns}</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function scrollTimeGridToRelevantHour() {
+  const scrollBody = document.querySelector('.time-scroll-body');
+  if (!scrollBody) return;
+  const now = new Date();
+  const targetHour = Math.max(now.getHours() - 2, 0);
+  scrollBody.scrollTop = targetHour * ROW_H;
 }
 
 function bindCalendarCellEvents() {
   document.querySelectorAll('[data-date]').forEach(el => {
     el.addEventListener('click', (e) => {
-      const chip = e.target.closest('.month-task-chip, .week-task-chip');
+      const chip = e.target.closest('.time-task-block');
       if (chip && chip.dataset.id) {
         e.stopPropagation();
         const t = tasks.find(x => x.id === chip.dataset.id);
@@ -770,6 +819,11 @@ function bindCalendarCellEvents() {
       }
       const [y, m, day] = el.dataset.date.split('-').map(Number);
       selectedCalendarDate = new Date(y, m - 1, day);
+      if (el.classList.contains('time-day-header') || el.classList.contains('time-day-col')) {
+        calendarDate = new Date(selectedCalendarDate);
+        setCalendarMode('day');
+        return;
+      }
       if (calendarMode !== 'day') renderCalendar();
       else renderCalendarDayPanel(selectedCalendarDate);
     });
