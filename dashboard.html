@@ -539,6 +539,7 @@ function rowTemplate(t) {
   const status = computeStatus(t);
   const pulse = status.key === 'late' ? 'pulse' : '';
   const modeLabel = t.review_mode === 'recurring' ? `كل ${t.recurrence_value} ${unitLabel(t.recurrence_unit)}` : 'مرة واحدة';
+  const isAnchor = t._isAnchor !== false; // true للمهام العادية وللموعد الفعلي القادم من المتكررة
 
   return `
   <div class="task-row">
@@ -554,6 +555,7 @@ function rowTemplate(t) {
     <div class="cell-task">
       ${escapeHtml(t.task_description)}
       ${t.supervisor_name ? `<div class="supervisor">👤 ${escapeHtml(t.supervisor_name)}</div>` : ''}
+      ${!isAnchor ? `<div class="supervisor">🔁 موعد متكرر متوقع</div>` : ''}
     </div>
     <div class="cell-mode">${modeLabel}</div>
     <div class="cell-time">
@@ -561,7 +563,9 @@ function rowTemplate(t) {
       <div class="exact">${formatExact(t.review_at)}</div>
     </div>
     <div class="cell-actions">
-      <button class="btn btn-sm btn-primary" data-action="review" data-id="${t.id}">تمت المراجعة</button>
+      ${isAnchor
+        ? `<button class="btn btn-sm btn-primary" data-action="review" data-id="${t.id}">تمت المراجعة</button>`
+        : `<span class="hint" style="align-self:center;">موعد قادم</span>`}
       <button class="icon-btn" data-action="edit" data-id="${t.id}" title="تعديل">✎</button>
       <button class="icon-btn" data-action="delete" data-id="${t.id}" title="حذف">🗑</button>
     </div>
@@ -670,10 +674,48 @@ function dateKey(d) {
 
 function isSameDay(a, b) { return dateKey(a) === dateKey(b); }
 
+const MAX_OCCURRENCES = 20000; // حماية من التكرارات الصغيرة جداً (زي كل دقيقتين) عبر مدى طويل
+
+// بيرجع كل مواعيد الاستحقاق الفعلية لمهمة معينة جوه مدى زمني معين
+// (لو المهمة متكررة، بيتوقع كل التكرارات القادمة اللي تقع في المدى ده)
+function getOccurrences(t, rangeStart, rangeEnd) {
+  const anchor = new Date(t.review_at);
+  const iv = intervalMs(t);
+
+  if (t.review_mode !== 'recurring' || !iv) {
+    return (anchor >= rangeStart && anchor <= rangeEnd) ? [{ date: anchor, isAnchor: true }] : [];
+  }
+
+  const occurrences = [];
+  let d = new Date(anchor);
+  let guard = 0;
+
+  // لو أول موعد بعد نهاية المدى، مفيش تكرارات جوه المدى ده
+  if (d > rangeEnd) return [];
+
+  while (d < rangeStart && guard < MAX_OCCURRENCES) { d = new Date(d.getTime() + iv); guard++; }
+
+  guard = 0;
+  while (d <= rangeEnd && guard < MAX_OCCURRENCES) {
+    occurrences.push({ date: new Date(d), isAnchor: d.getTime() === anchor.getTime() });
+    d = new Date(d.getTime() + iv);
+    guard++;
+  }
+  return occurrences;
+}
+
+// بيرجّع نسخ "مهام" جاهزة للعرض ليوم معين (بما فيها تكرارات المهام المتكررة)
 function getTasksForDay(d) {
-  const key = dateKey(d);
-  return tasks.filter(t => dateKey(new Date(t.review_at)) === key)
-    .sort((a, b) => new Date(a.review_at) - new Date(b.review_at));
+  const rangeStart = new Date(d); rangeStart.setHours(0, 0, 0, 0);
+  const rangeEnd = new Date(d); rangeEnd.setHours(23, 59, 59, 999);
+
+  const result = [];
+  tasks.forEach(t => {
+    getOccurrences(t, rangeStart, rangeEnd).forEach(occ => {
+      result.push({ ...t, review_at: occ.date.toISOString(), _isAnchor: occ.isAnchor, _realId: t.id });
+    });
+  });
+  return result.sort((a, b) => new Date(a.review_at) - new Date(b.review_at));
 }
 
 function startOfWeek(d) {
