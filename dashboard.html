@@ -110,21 +110,22 @@ textarea{resize:vertical;min-height:64px}
 .calendar-title{font-size:15.5px;font-weight:800;margin-inline-start:8px;min-width:130px}
 .calendar-mode-toggle{min-width:220px}
 
-.month-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
-.month-day-header{text-align:center;font-size:11.5px;color:var(--text-faint);padding:6px 0;text-transform:uppercase;letter-spacing:.4px}
-.month-cell{background:var(--bg-elevated);border:1px solid var(--border-soft);border-radius:var(--radius-sm);aspect-ratio:1/1;min-height:64px;max-height:88px;padding:6px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;transition:border-color .12s ease,background .12s ease}
-.month-cell:hover{border-color:var(--text-faint)}
-.month-cell.other-month{opacity:.35}
-.month-cell.today{border-color:var(--accent)}
-.month-cell.selected{background:var(--bg-panel-2);border-color:var(--accent)}
-.month-cell-date{font-family:var(--font-data);font-size:13.5px;color:var(--text-muted);font-weight:700}
+.month-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px;background:var(--border-soft);border:1px solid var(--border-soft);border-radius:var(--radius-sm);overflow:hidden}
+.month-day-header{text-align:center;font-size:11px;color:var(--text-faint);padding:6px 0;text-transform:uppercase;letter-spacing:.4px;background:var(--bg-panel)}
+.month-cell{background:var(--bg-panel);height:96px;padding:5px 6px;cursor:pointer;display:flex;flex-direction:column;gap:3px;overflow:hidden;transition:background .12s ease}
+.month-cell:hover{background:var(--bg-panel-2)}
+.month-cell.other-month{opacity:.4}
+.month-cell.today{background:rgba(0,120,212,.06)}
+.month-cell.selected{background:var(--bg-panel-2);box-shadow:inset 0 0 0 2px var(--accent)}
+.month-cell-date{font-family:var(--font-data);font-size:12px;color:var(--text-muted);font-weight:700;flex-shrink:0}
 .month-cell.today .month-cell-date{color:var(--accent)}
-.month-cell-dots{display:flex;gap:4px}
-.month-dot{width:7px;height:7px;border-radius:50%}
-.month-dot.late{background:var(--status-late)}
-.month-dot.warn{background:var(--status-warn)}
-.month-dot.ok{background:var(--status-ok)}
-.month-cell-count{font-family:var(--font-data);font-size:9.5px;color:var(--text-faint)}
+.month-cell-bars{display:flex;flex-direction:column;gap:2px;overflow:hidden;min-height:0}
+.month-task-bar{font-size:10px;line-height:1.3;padding:2px 5px;border-radius:3px;background:var(--bg-elevated);border-inline-start:3px solid var(--status-ok);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;flex-shrink:0}
+.month-task-bar:hover{filter:brightness(.97)}
+.month-task-bar.late{border-inline-start-color:var(--status-late);background:var(--status-late-bg)}
+.month-task-bar.warn{border-inline-start-color:var(--status-warn);background:var(--status-warn-bg)}
+.month-task-time{font-family:var(--font-data);color:var(--text-muted);margin-inline-end:2px}
+.month-cell-more{font-size:9.5px;color:var(--text-faint);flex-shrink:0}
 
 .time-grid-wrap{border:1px solid var(--border-soft);border-radius:var(--radius-md);overflow:hidden;background:var(--bg-panel)}
 .time-scroll-body{max-height:560px;overflow-y:auto}
@@ -159,8 +160,9 @@ textarea{resize:vertical;min-height:64px}
 
 @media (max-width:860px){
   .month-grid{gap:4px}
-  .month-cell{min-height:44px;max-height:60px;padding:3px}
-  .month-dot{width:5px;height:5px}
+  .month-cell{height:64px;padding:3px 4px}
+  .month-task-bar{font-size:8.5px;padding:1px 3px}
+  .month-cell-date{font-size:10px}
   .time-gutter{width:40px}
   .time-gutter-hour{font-size:9px}
   .time-task-block{font-size:9px;height:34px}
@@ -718,13 +720,20 @@ function renderMonthGrid() {
 
   let html = AR_DAYS_SHORT.map(d => `<div class="month-day-header">${d}</div>`).join('');
 
+  const MAX_BARS = 2;
+
   for (let i = 0; i < 42; i++) {
     const cellDate = new Date(gridStart);
     cellDate.setDate(gridStart.getDate() + i);
     const dayTasks = getTasksForDay(cellDate);
-    const statuses = dayTasks.map(t => computeStatus(t).key);
-    const dots = [...new Set(statuses)].filter(s => s !== 'done').slice(0, 3)
-      .map(s => `<span class="month-dot ${s}"></span>`).join('');
+
+    const bars = dayTasks.slice(0, MAX_BARS).map(t => {
+      const s = computeStatus(t).key;
+      const time = new Date(t.review_at).toLocaleTimeString('ar-EG', { hour: 'numeric', minute: '2-digit' });
+      const label = `${escapeHtml(t.employee_name)} — ${escapeHtml(t.task_description)}`;
+      return `<div class="month-task-bar ${s}" data-id="${t.id}" title="${label}"><span class="month-task-time">${time}</span> ${label}</div>`;
+    }).join('');
+    const more = dayTasks.length > MAX_BARS ? `<div class="month-cell-more">+${dayTasks.length - MAX_BARS} كمان</div>` : '';
 
     const classes = ['month-cell'];
     if (cellDate.getMonth() !== month) classes.push('other-month');
@@ -733,8 +742,7 @@ function renderMonthGrid() {
 
     html += `<div class="${classes.join(' ')}" data-date="${dateKey(cellDate)}">
       <div class="month-cell-date">${cellDate.getDate()}</div>
-      <div class="month-cell-dots">${dots}</div>
-      ${dayTasks.length ? `<div class="month-cell-count">${dayTasks.length}</div>` : ''}
+      <div class="month-cell-bars">${bars}${more}</div>
     </div>`;
   }
   return html;
@@ -810,7 +818,7 @@ function scrollTimeGridToRelevantHour() {
 function bindCalendarCellEvents() {
   document.querySelectorAll('[data-date]').forEach(el => {
     el.addEventListener('click', (e) => {
-      const chip = e.target.closest('.time-task-block');
+      const chip = e.target.closest('.month-task-bar, .time-task-block');
       if (chip && chip.dataset.id) {
         e.stopPropagation();
         const t = tasks.find(x => x.id === chip.dataset.id);
