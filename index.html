@@ -2,99 +2,10 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>تسجيل الدخول — متابعة تنفيذ المهام</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
-<style>
-:root{--bg-floor:#12151a;--bg-panel:#1a1e25;--bg-elevated:#262c36;--border:#2c323c;--border-soft:#232830;--text-primary:#eceef1;--text-muted:#8b93a1;--accent:#f5a623;--accent-dim:#b97c1a;--status-late:#ff5c5c;--status-late-bg:rgba(255,92,92,.14);--radius-sm:6px;--radius-lg:16px;--font-display:'Tajawal','Segoe UI',sans-serif;--shadow-panel:0 8px 24px rgba(0,0,0,.35)}
-*{box-sizing:border-box}
-html,body{margin:0;padding:0;background:var(--bg-floor);color:var(--text-primary);font-family:var(--font-display);direction:rtl;min-height:100vh}
-body{background-image:radial-gradient(circle at 15% 0%,rgba(245,166,35,.05),transparent 40%),radial-gradient(circle at 85% 100%,rgba(53,212,136,.04),transparent 40%);background-attachment:fixed}
-.login-shell{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
-.login-card{width:100%;max-width:380px;background:var(--bg-panel);border:1px solid var(--border-soft);border-radius:var(--radius-lg);padding:32px 28px;box-shadow:var(--shadow-panel)}
-.brand{display:flex;flex-direction:column;align-items:center;text-align:center;margin-bottom:22px}
-.brand-mark{width:52px;height:52px;border-radius:10px;background:linear-gradient(145deg,var(--accent),var(--accent-dim));display:flex;align-items:center;justify-content:center;font-size:22px}
-.brand h1{font-size:18px;margin:10px 0 4px}
-.brand span{font-size:12.5px;color:var(--text-muted)}
-form{display:grid;gap:14px;margin-top:8px}
-.form-row{display:grid;gap:6px}
-label{font-size:12.5px;color:var(--text-muted);font-weight:600}
-input{font-family:var(--font-display);background:var(--bg-elevated);border:1px solid var(--border);color:var(--text-primary);padding:10px 12px;border-radius:var(--radius-sm);font-size:14px;width:100%}
-input:focus{outline:none;border-color:var(--accent)}
-.btn{font-family:var(--font-display);font-size:14px;font-weight:700;padding:10px 18px;border-radius:var(--radius-sm);border:1px solid var(--accent);background:var(--accent);color:#16181c;cursor:pointer;width:100%}
-.btn:disabled{opacity:.6;cursor:not-allowed}
-.login-error{background:var(--status-late-bg);color:var(--status-late);border:1px solid rgba(255,92,92,.3);padding:10px 12px;border-radius:var(--radius-sm);font-size:13px;display:none}
-.login-error.show{display:block}
-</style>
+<meta http-equiv="refresh" content="0; url=dashboard.html">
+<title>متابعة تنفيذ المهام</title>
+<script>window.location.replace('dashboard.html');</script>
 </head>
 <body>
-
-<div class="login-shell">
-  <div class="login-card">
-    <div class="brand">
-      <div class="brand-mark">⏱</div>
-      <h1>متابعة تنفيذ المهام</h1>
-      <span>سجّل دخولك للمتابعة</span>
-    </div>
-
-    <div id="loginError" class="login-error"></div>
-
-    <form id="loginForm">
-      <div class="form-row">
-        <label for="email">البريد الإلكتروني</label>
-        <input type="text" id="email" autocomplete="username" required placeholder="you@example.com">
-      </div>
-      <div class="form-row">
-        <label for="password">كلمة المرور</label>
-        <input type="password" id="password" autocomplete="current-password" required placeholder="••••••••">
-      </div>
-      <button type="submit" class="btn" id="loginBtn">دخول</button>
-    </form>
-  </div>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>
-  const SUPABASE_URL = 'https://tzjegripbztrqdfvretb.supabase.co';
-  const SUPABASE_ANON_KEY = 'sb_publishable_E2ZLXk6cHRevtZZY5LWlmA_-LSpNFYJ';
-
-  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-  const form = document.getElementById('loginForm');
-  const errBox = document.getElementById('loginError');
-  const loginBtn = document.getElementById('loginBtn');
-
-  function showError(msg) {
-    errBox.textContent = msg;
-    errBox.classList.add('show');
-  }
-
-  (async () => {
-    const { data } = await supabase.auth.getSession();
-    if (data.session) window.location.href = 'dashboard.html';
-  })();
-
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    errBox.classList.remove('show');
-    loginBtn.disabled = true;
-    loginBtn.textContent = 'جاري الدخول...';
-
-    const email = document.getElementById('email').value.trim();
-    const password = document.getElementById('password').value;
-
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-
-    if (error) {
-      showError('البريد الإلكتروني أو كلمة المرور غير صحيحة: ' + error.message);
-      loginBtn.disabled = false;
-      loginBtn.textContent = 'دخول';
-      return;
-    }
-
-    window.location.href = 'dashboard.html';
-  });
-</script>
 </body>
 </html>
