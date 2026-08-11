@@ -480,4 +480,3 @@ function toast(msg, type = 'default') {
   stack.appendChild(el);
   setTimeout(() => el.remove(), 4000);
 }
- 
