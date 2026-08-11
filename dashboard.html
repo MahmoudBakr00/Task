@@ -95,6 +95,12 @@ textarea{resize:vertical;min-height:64px}
 .day-picker{display:flex;gap:6px;flex-wrap:wrap}
 .day-chip{font-family:var(--font-display);font-size:12px;font-weight:600;padding:7px 10px;border-radius:999px;border:1px solid var(--border);background:var(--bg-elevated);color:var(--text-faint);cursor:pointer}
 .day-chip.active{background:var(--accent);border-color:var(--accent);color:#ffffff}
+.steps-list{display:flex;flex-direction:column;gap:6px}
+.step-item{display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;font-size:13px}
+.step-item .step-type-badge{font-size:10.5px;color:var(--text-muted);background:var(--bg-panel);border:1px solid var(--border);border-radius:999px;padding:2px 8px;margin-inline-start:8px}
+.step-item .remove-step-btn{background:transparent;border:none;color:var(--status-late);cursor:pointer;font-size:14px}
+.assignee-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:999px;padding:2px 8px;color:var(--text-muted);margin-top:4px}
+.evidence-badge{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;color:var(--accent);margin-top:4px}
 .toast-stack{position:fixed;bottom:20px;inset-inline-end:20px;display:grid;gap:10px;z-index:80}
 .toast{background:var(--bg-elevated);border:1px solid var(--border);border-inline-start:4px solid var(--accent);color:var(--text-primary);padding:12px 16px;border-radius:var(--radius-sm);font-size:13.5px;box-shadow:var(--shadow-panel);min-width:220px;animation:toast-in .2s ease}
 .toast.success{border-inline-start-color:var(--status-ok)}
@@ -145,12 +151,10 @@ textarea{resize:vertical;min-height:64px}
 .time-day-header-num{font-family:var(--font-data)}
 .time-day-col{position:relative;cursor:pointer}
 .time-hour-line{border-bottom:1px solid var(--border-soft);box-sizing:border-box}
-.time-task-block{position:absolute;height:38px;border-radius:5px;padding:2px 6px;font-size:10px;line-height:1.25;overflow:hidden;cursor:pointer;border-inline-start:3px solid var(--status-ok);background:var(--status-ok-bg);color:var(--text-primary);z-index:1;box-sizing:border-box}
+.time-task-block{position:absolute;inset-inline:3px;height:38px;border-radius:5px;padding:2px 6px;font-size:10px;line-height:1.25;overflow:hidden;cursor:pointer;border-inline-start:3px solid var(--status-ok);background:var(--status-ok-bg);color:var(--text-primary);z-index:1;box-sizing:border-box}
 .time-task-block.late{border-inline-start-color:var(--status-late);background:var(--status-late-bg)}
 .time-task-block.warn{border-inline-start-color:var(--status-warn);background:var(--status-warn-bg)}
 .time-task-block:hover{filter:brightness(.96);z-index:3}
-.time-task-block.compact{font-size:9px;padding:2px 4px}
-.time-task-block.compact .time-task-time{display:block}
 .time-task-time{font-family:var(--font-data);font-weight:700}
 .time-now-line{position:absolute;inset-inline:0;height:2px;background:var(--status-late);z-index:4;pointer-events:none}
 .time-now-line::before{content:'';position:absolute;inset-inline-start:-4px;top:-3px;width:8px;height:8px;border-radius:50%;background:var(--status-late)}
@@ -195,6 +199,7 @@ textarea{resize:vertical;min-height:64px}
       <button class="btn btn-ghost btn-sm" id="notifyBtn" title="تفعيل التنبيهات">
         🔔 <span id="notifyLabel">تفعيل الإشعارات</span>
       </button>
+      <button class="btn btn-ghost btn-sm" id="addEmployeeBtn" hidden>👤+ إضافة موظف</button>
       <button class="btn btn-primary" id="addTaskBtn">+ مهمة جديدة</button>
       <button class="icon-btn" id="logoutBtn" title="تسجيل الخروج">⏻</button>
     </div>
@@ -277,6 +282,57 @@ textarea{resize:vertical;min-height:64px}
 </div>
 
 
+<div class="modal-overlay" id="evidenceModal" hidden>
+  <div class="modal">
+    <div class="modal-header">
+      <h2>تنفيذ المهمة + رفع الدليل</h2>
+      <button class="icon-btn" id="closeEvidenceModalBtn">✕</button>
+    </div>
+    <form id="evidenceForm">
+      <div class="modal-body">
+        <div class="form-row">
+          <label id="evidenceTaskLabel"></label>
+        </div>
+        <div id="evidenceFieldsContainer"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" id="cancelEvidenceModalBtn">إلغاء</button>
+        <button type="submit" class="btn btn-primary" id="submitEvidenceBtn">تأكيد التنفيذ</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-overlay" id="employeeModal" hidden>
+  <div class="modal">
+    <div class="modal-header">
+      <h2>إضافة موظف جديد</h2>
+      <button class="icon-btn" id="closeEmployeeModalBtn">✕</button>
+    </div>
+    <form id="employeeForm">
+      <div class="modal-body">
+        <div class="form-row">
+          <label for="e_full_name">اسم الموظف *</label>
+          <input type="text" id="e_full_name" required>
+        </div>
+        <div class="form-row">
+          <label for="e_employee_code">الكود الوظيفي *</label>
+          <input type="text" id="e_employee_code" required placeholder="هيبقى هو الإيميل وكلمة المرور الأولية">
+        </div>
+        <div class="form-row">
+          <label for="e_role">الدور *</label>
+          <select id="e_role" required></select>
+        </div>
+        <div class="hint">الموظف هيدخل بالكود الوظيفي ده كإيميل وكلمة مرور، وهيتطلب منه يغيّر كلمة المرور أول ما يدخل.</div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" id="cancelEmployeeModalBtn">إلغاء</button>
+        <button type="submit" class="btn btn-primary" id="saveEmployeeBtn">إضافة</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <div class="modal-overlay" id="taskModal" hidden>
   <div class="modal">
     <div class="modal-header">
@@ -317,6 +373,49 @@ textarea{resize:vertical;min-height:64px}
           <input type="text" id="f_supervisor" list="dl_supervisors">
           <datalist id="dl_supervisors"></datalist>
         </div>
+
+        <div class="form-row">
+          <label for="f_assigned_to">تكليف لموظف (اختياري)</label>
+          <select id="f_assigned_to">
+            <option value="">بدون تكليف — متابعة شخصية بس</option>
+          </select>
+          <div class="hint">لو حددتي موظف، هو اللي هيدخل السيستم وينفذ المهمة ويرفع الدليل لو مطلوب</div>
+        </div>
+
+        <div class="form-row" id="evidenceCheckRow" hidden>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+            <input type="checkbox" id="f_requires_evidence" style="width:auto;">
+            يتطلب رفع دليل تنفيذ (صورة / رقم / نص) قبل ما يقفل المهمة
+          </label>
+        </div>
+
+        <div class="form-row" id="evidenceStepsRow" hidden>
+          <label>خطوات الدليل المطلوبة</label>
+          <div id="evidenceStepsList" class="steps-list"></div>
+          <button type="button" class="btn btn-ghost btn-sm" id="addStepBtn" style="justify-content:center;">+ إضافة خطوة</button>
+        </div>
+
+        <div class="form-row" id="addStepForm" hidden>
+          <div class="form-row-2">
+            <div class="form-row">
+              <label for="newStepLabel">وصف الخطوة</label>
+              <input type="text" id="newStepLabel" placeholder="مثلاً: صورة عداد الجهاز">
+            </div>
+            <div class="form-row">
+              <label for="newStepType">نوع المدخل</label>
+              <select id="newStepType">
+                <option value="text">نص</option>
+                <option value="number">رقم</option>
+                <option value="image">صورة</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button type="button" class="btn btn-primary btn-sm" id="confirmStepBtn">إضافة</button>
+            <button type="button" class="btn btn-ghost btn-sm" id="cancelStepBtn">إلغاء</button>
+          </div>
+        </div>
+
         <div class="form-row">
           <label>معاد المراجعة</label>
           <div class="mode-toggle">
@@ -389,7 +488,6 @@ const SUPABASE_ANON_KEY = 'sb_publishable_E2ZLXk6cHRevtZZY5LWlmA_-LSpNFYJ';
 
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-let currentUser = null;
 let tasks = [];
 let editingTaskId = null;
 let notifiedKeys = new Set(JSON.parse(localStorage.getItem('notifiedKeys') || '[]'));
@@ -397,15 +495,139 @@ let notifiedKeys = new Set(JSON.parse(localStorage.getItem('notifiedKeys') || '[
 const REFRESH_INTERVAL_MS = 30 * 1000;
 const CHECK_NOTIFY_INTERVAL_MS = 60 * 1000;
 
+const ROLE_LABELS = { admin: 'أدمن', engineer: 'مهندس', supervisor: 'مشرف', technician: 'فني' };
+const ROLE_RANK = { admin: 4, engineer: 3, supervisor: 2, technician: 1 };
+const EMPLOYEE_EMAIL_DOMAIN = 'mee-tasks.local';
+
+let currentUser = null;
+let currentProfile = null;
+let allProfiles = [];
+
+// ------------------------------------------------------------
+// إدارة الموظفين (إضافة حسابات جديدة تحت رتبة المستخدم الحالي)
+// ------------------------------------------------------------
+function getAssignableRoles(myRole) {
+  const myRank = ROLE_RANK[myRole] || 0;
+  return Object.keys(ROLE_RANK).filter(r => ROLE_RANK[r] < myRank);
+}
+
+function getAssignableProfiles() {
+  const myRank = ROLE_RANK[currentProfile.role] || 0;
+  return allProfiles.filter(p => (ROLE_RANK[p.role] || 0) < myRank);
+}
+
+function setupRoleBasedUI() {
+  const assignable = getAssignableRoles(currentProfile.role);
+  document.getElementById('addEmployeeBtn').hidden = assignable.length === 0;
+
+  const roleSelect = document.getElementById('e_role');
+  roleSelect.innerHTML = assignable.map(r => `<option value="${r}">${ROLE_LABELS[r]}</option>`).join('');
+}
+
+function openEmployeeModal() {
+  document.getElementById('employeeForm').reset();
+  document.getElementById('employeeModal').hidden = false;
+}
+
+function closeEmployeeModal() {
+  document.getElementById('employeeModal').hidden = true;
+}
+
+async function createEmployee(e) {
+  e.preventDefault();
+  const saveBtn = document.getElementById('saveEmployeeBtn');
+  saveBtn.disabled = true;
+  saveBtn.textContent = 'جاري الإضافة...';
+
+  const fullName = document.getElementById('e_full_name').value.trim();
+  const code = document.getElementById('e_employee_code').value.trim();
+  const role = document.getElementById('e_role').value;
+
+  if (!fullName || !code || !role) {
+    toast('املي كل الحقول', 'error');
+    saveBtn.disabled = false; saveBtn.textContent = 'إضافة';
+    return;
+  }
+
+  // عميل ثانوي مؤقت (persistSession: false) عشان إنشاء الحساب الجديد
+  // ميبدلش جلسة تسجيل الدخول بتاعتك انتِ — نفس الحل اللي استخدمناه في سيستم الكواليتي
+  const tempClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false }
+  });
+
+  const email = `${code}@${EMPLOYEE_EMAIL_DOMAIN}`;
+
+  const { data: signUpData, error: signUpError } = await tempClient.auth.signUp({
+    email, password: code,
+  });
+
+  if (signUpError || !signUpData.user) {
+    toast('حصل خطأ أثناء إنشاء الحساب: ' + (signUpError?.message || 'غير معروف'), 'error');
+    saveBtn.disabled = false; saveBtn.textContent = 'إضافة';
+    return;
+  }
+
+  const { error: profileError } = await supabase.from('profiles').insert({
+    id: signUpData.user.id,
+    full_name: fullName,
+    role,
+    employee_code: code,
+    must_change_password: true,
+  });
+
+  saveBtn.disabled = false; saveBtn.textContent = 'إضافة';
+
+  if (profileError) {
+    toast('حصل خطأ أثناء حفظ بيانات الموظف: ' + profileError.message, 'error');
+    return;
+  }
+
+  toast(`تمت إضافة ${fullName} ✅ — الإيميل: ${email} / كلمة المرور المبدئية: ${code}`, 'success');
+  closeEmployeeModal();
+
+  const { data: profilesData } = await supabase.from('profiles').select('*').order('full_name');
+  allProfiles = profilesData || [];
+  populateAssigneeDropdown();
+}
+
+
+
 (async function init() {
-  document.getElementById('userEmailLabel').textContent = 'بدون تسجيل دخول';
-  document.getElementById('logoutBtn').style.display = 'none';
+  const { data: sessionData } = await supabase.auth.getSession();
+  if (!sessionData.session) {
+    window.location.href = 'index.html';
+    return;
+  }
+  currentUser = sessionData.session.user;
+
+  const { data: profileRow, error: profileErr } = await supabase
+    .from('profiles').select('*').eq('id', currentUser.id).maybeSingle();
+
+  if (profileErr || !profileRow) {
+    document.body.innerHTML = `<div style="padding:40px;font-family:Tajawal,sans-serif;text-align:center;direction:rtl;">
+      <h2>الحساب ده لسه ملوش دور محدد في السيستم</h2>
+      <p>لازم الأدمن يضيف صف في جدول profiles بالإيميل ده والدور المناسب.</p>
+      <button onclick="location.href='index.html'" style="padding:10px 18px;border-radius:6px;border:none;background:#0078d4;color:#fff;cursor:pointer;">تسجيل خروج</button>
+    </div>`;
+    await supabase.auth.signOut();
+    return;
+  }
+  currentProfile = profileRow;
+
+  if (currentProfile.must_change_password) {
+    window.location.href = 'change-password.html';
+    return;
+  }
+
+  const { data: profilesData } = await supabase.from('profiles').select('*').order('full_name');
+  allProfiles = profilesData || [];
+
+  document.getElementById('userEmailLabel').textContent = `${currentProfile.full_name} — ${ROLE_LABELS[currentProfile.role] || currentProfile.role}`;
+  setupRoleBasedUI();
+  populateAssigneeDropdown();
 
   bindUI();
   restoreNotifyState();
-  if ('Notification' in window && Notification.permission === 'granted') {
-    await registerServiceWorker();
-  }
   await loadTasks();
   setInterval(refreshView, REFRESH_INTERVAL_MS);
   setInterval(checkDueNotifications, CHECK_NOTIFY_INTERVAL_MS);
@@ -461,9 +683,18 @@ function formatExact(iso) {
 }
 
 async function loadTasks() {
-  const { data, error } = await supabase.from('tasks').select('*').neq('status', 'done').order('review_at', { ascending: true });
+  let query = supabase.from('tasks').select('*').neq('status', 'done').order('review_at', { ascending: true });
+
+  if (currentProfile.role === 'technician') {
+    query = query.eq('assigned_to', currentUser.id);
+  } else {
+    query = query.or(`created_by.eq.${currentUser.id},assigned_to.eq.${currentUser.id}`);
+  }
+
+  const { data, error } = await query;
   if (error) { toast('حصل خطأ في تحميل المهام: ' + error.message, 'error'); return; }
   tasks = data || [];
+  checkNewAssignments();
   populateFilterOptions();
   refreshView();
 }
@@ -570,6 +801,19 @@ function rowTemplate(t) {
   const modeLabel = t.review_mode === 'recurring' ? `كل ${t.recurrence_value} ${unitLabel(t.recurrence_unit)}` : 'مرة واحدة';
   const isAnchor = t._isAnchor !== false; // true للمهام العادية وللموعد الفعلي القادم من المتكررة
 
+  const assignee = t.assigned_to ? allProfiles.find(p => p.id === t.assigned_to) : null;
+  const isMyExecutionTask = t.assigned_to && currentUser && t.assigned_to === currentUser.id;
+  const needsEvidenceFromMe = isMyExecutionTask && t.requires_evidence;
+
+  let actionBtn;
+  if (!isAnchor) {
+    actionBtn = `<span class="hint" style="align-self:center;">موعد قادم</span>`;
+  } else if (needsEvidenceFromMe) {
+    actionBtn = `<button class="btn btn-sm btn-primary" data-action="evidence" data-id="${t.id}">تنفيذ + رفع دليل</button>`;
+  } else {
+    actionBtn = `<button class="btn btn-sm btn-primary" data-action="review" data-id="${t.id}">تمت المراجعة</button>`;
+  }
+
   return `
   <div class="task-row">
     <div class="status-strip ${status.key} ${pulse}"></div>
@@ -585,6 +829,8 @@ function rowTemplate(t) {
       ${escapeHtml(t.task_description)}
       ${t.supervisor_name ? `<div class="supervisor">👤 ${escapeHtml(t.supervisor_name)}</div>` : ''}
       ${!isAnchor ? `<div class="supervisor">🔁 موعد متكرر متوقع</div>` : ''}
+      ${assignee ? `<div class="assignee-badge">🎯 ${escapeHtml(assignee.full_name)}</div>` : ''}
+      ${t.requires_evidence ? `<div class="evidence-badge">📋 يتطلب دليل تنفيذ</div>` : ''}
     </div>
     <div class="cell-mode">${modeLabel}</div>
     <div class="cell-time">
@@ -592,9 +838,7 @@ function rowTemplate(t) {
       <div class="exact">${formatExact(t.review_at)}</div>
     </div>
     <div class="cell-actions">
-      ${isAnchor
-        ? `<button class="btn btn-sm btn-primary" data-action="review" data-id="${t.id}">تمت المراجعة</button>`
-        : `<span class="hint" style="align-self:center;">موعد قادم</span>`}
+      ${actionBtn}
       <button class="icon-btn" data-action="edit" data-id="${t.id}" title="تعديل">✎</button>
       <button class="icon-btn" data-action="delete" data-id="${t.id}" title="حذف">🗑</button>
     </div>
@@ -641,6 +885,23 @@ function bindUI() {
     chip.addEventListener('click', () => chip.classList.toggle('active'));
   });
 
+  document.getElementById('addEmployeeBtn').addEventListener('click', openEmployeeModal);
+  document.getElementById('closeEmployeeModalBtn').addEventListener('click', closeEmployeeModal);
+  document.getElementById('cancelEmployeeModalBtn').addEventListener('click', closeEmployeeModal);
+  document.getElementById('employeeModal').addEventListener('click', (e) => { if (e.target.id === 'employeeModal') closeEmployeeModal(); });
+  document.getElementById('employeeForm').addEventListener('submit', createEmployee);
+
+  document.getElementById('closeEvidenceModalBtn').addEventListener('click', closeEvidenceModal);
+  document.getElementById('cancelEvidenceModalBtn').addEventListener('click', closeEvidenceModal);
+  document.getElementById('evidenceModal').addEventListener('click', (e) => { if (e.target.id === 'evidenceModal') closeEvidenceModal(); });
+  document.getElementById('evidenceForm').addEventListener('submit', submitEvidence);
+
+  document.getElementById('f_assigned_to').addEventListener('change', onAssigneeChange);
+  document.getElementById('f_requires_evidence').addEventListener('change', onEvidenceCheckChange);
+  document.getElementById('addStepBtn').addEventListener('click', () => { document.getElementById('addStepForm').hidden = false; });
+  document.getElementById('cancelStepBtn').addEventListener('click', () => { document.getElementById('addStepForm').hidden = true; });
+  document.getElementById('confirmStepBtn').addEventListener('click', addEvidenceStep);
+
   bindTaskRowActions('taskList');
   bindTaskRowActions('calendarDayList');
 }
@@ -654,6 +915,7 @@ function bindTaskRowActions(containerId) {
     const id = btn.dataset.id;
     const action = btn.dataset.action;
     if (action === 'review') markReviewed(id);
+    else if (action === 'evidence') openEvidenceModal(id);
     else if (action === 'edit') {
       const t = tasks.find(x => x.id === id);
       if (t) openModal(t);
@@ -899,27 +1161,22 @@ function renderTimeGrid(days) {
     const headerClasses = ['time-day-header'];
     if (isToday) headerClasses.push('today');
 
-    // المهام اللي وقتها متقارب/متطابق بتتحط جنب بعض (أعمدة) بدل ما تتراكب فوق بعض
-    const blockH = 40;
-    const placed = dayTasks.slice().sort((a, b) => new Date(a.review_at) - new Date(b.review_at)).map(t => {
+    // منع تداخل المهام اللي في نفس الوقت تقريباً فوق بعض
+    const placed = [];
+    dayTasks.slice().sort((a, b) => new Date(a.review_at) - new Date(b.review_at)).forEach(t => {
       const dt = new Date(t.review_at);
       const minutesFromMidnight = dt.getHours() * 60 + dt.getMinutes();
-      const top = (minutesFromMidnight / 60) * ROW_H;
-      return { t, top };
+      let top = (minutesFromMidnight / 60) * ROW_H;
+      const blockH = 40;
+      const lastBottom = placed.length ? placed[placed.length - 1]._bottom : -999;
+      if (top < lastBottom + 4) top = lastBottom + 4;
+      placed.push({ t, top, _bottom: top + blockH });
     });
-    assignOverlapColumns(placed, blockH);
 
-    const blocks = placed.map(({ t, top, _col, _colCount }) => {
+    const blocks = placed.map(({ t, top }) => {
       const s = computeStatus(t).key;
       const time = new Date(t.review_at).toLocaleTimeString('ar-EG', { hour: 'numeric', minute: '2-digit' });
-      const colCount = _colCount || 1;
-      const col = _col || 0;
-      const leftPct = (col / colCount) * 100;
-      const widthPct = (100 / colCount);
-      const gap = colCount > 1 ? 2 : 3;
-      const style = `top:${top}px; inset-inline-start:calc(${leftPct}% + ${gap}px); width:calc(${widthPct}% - ${gap * 2}px);`;
-      const compact = colCount > 1 ? ' compact' : '';
-      return `<div class="time-task-block ${s}${compact}" data-id="${t.id}" style="${style}" title="${escapeHtml(t.employee_name)} — ${escapeHtml(t.task_description)}">
+      return `<div class="time-task-block ${s}" data-id="${t.id}" style="top:${top}px" title="${escapeHtml(t.employee_name)} — ${escapeHtml(t.task_description)}">
         <span class="time-task-time">${time}</span> ${escapeHtml(t.employee_name)} — ${escapeHtml(t.task_description)}
       </div>`;
     }).join('');
@@ -946,40 +1203,6 @@ function renderTimeGrid(days) {
       </div>
     </div>
   </div>`;
-}
-
-// بتوزّع المهام اللي أوقاتها متداخلة على أعمدة جنب بعض بدل ما تتراكب فوق بعض
-// placed: [{t, top}] لازم تكون متسورتة حسب top تصاعدياً
-function assignOverlapColumns(placed, blockH) {
-  let clusterStart = 0;
-  let clusterEnd = -Infinity;
-  let clusterItems = [];
-
-  function flushCluster() {
-    if (!clusterItems.length) return;
-    const columns = []; // كل عنصر = آخر وقت "بتاع" العمود ده (top + blockH)
-    clusterItems.forEach(item => {
-      let colIndex = columns.findIndex(colBottom => item.top >= colBottom);
-      if (colIndex === -1) { columns.push(item.top + blockH); colIndex = columns.length - 1; }
-      else { columns[colIndex] = item.top + blockH; }
-      item._col = colIndex;
-    });
-    const colCount = columns.length;
-    clusterItems.forEach(item => { item._colCount = colCount; });
-    clusterItems = [];
-  }
-
-  placed.forEach(item => {
-    if (clusterItems.length === 0 || item.top < clusterEnd) {
-      clusterItems.push(item);
-      clusterEnd = Math.max(clusterEnd, item.top + blockH);
-    } else {
-      flushCluster();
-      clusterItems = [item];
-      clusterEnd = item.top + blockH;
-    }
-  });
-  flushCluster();
 }
 
 function scrollTimeGridToRelevantHour() {
@@ -1030,6 +1253,68 @@ function renderCalendarDayPanel(d) {
   container.innerHTML = list.map(t => rowTemplate(t)).join('');
 }
 
+// ------------------------------------------------------------
+// تكليف الموظف + بنّاء خطوات الدليل
+// ------------------------------------------------------------
+let currentSteps = [];
+let stepIdCounter = 0;
+
+function populateAssigneeDropdown() {
+  const select = document.getElementById('f_assigned_to');
+  const current = select.value;
+  const assignable = getAssignableProfiles();
+  select.innerHTML = '<option value="">بدون تكليف — متابعة شخصية بس</option>' +
+    assignable.map(p => `<option value="${p.id}">${escapeHtml(p.full_name)} (${ROLE_LABELS[p.role]})</option>`).join('');
+  select.value = assignable.some(p => p.id === current) ? current : '';
+}
+
+function onAssigneeChange() {
+  const hasAssignee = !!document.getElementById('f_assigned_to').value;
+  document.getElementById('evidenceCheckRow').hidden = !hasAssignee;
+  if (!hasAssignee) {
+    document.getElementById('f_requires_evidence').checked = false;
+    onEvidenceCheckChange();
+  }
+}
+
+function onEvidenceCheckChange() {
+  const checked = document.getElementById('f_requires_evidence').checked;
+  document.getElementById('evidenceStepsRow').hidden = !checked;
+  if (!checked) document.getElementById('addStepForm').hidden = true;
+}
+
+function renderStepsList() {
+  const container = document.getElementById('evidenceStepsList');
+  const typeLabels = { text: 'نص', number: 'رقم', image: 'صورة' };
+  if (currentSteps.length === 0) {
+    container.innerHTML = `<div class="hint">لسه مفيش خطوات مضافة</div>`;
+    return;
+  }
+  container.innerHTML = currentSteps.map(s => `
+    <div class="step-item">
+      <span>${escapeHtml(s.label)} <span class="step-type-badge">${typeLabels[s.type]}</span></span>
+      <button type="button" class="remove-step-btn" data-remove-step="${s.id}">✕</button>
+    </div>
+  `).join('');
+  container.querySelectorAll('[data-remove-step]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      currentSteps = currentSteps.filter(s => s.id !== btn.dataset.removeStep);
+      renderStepsList();
+    });
+  });
+}
+
+function addEvidenceStep() {
+  const label = document.getElementById('newStepLabel').value.trim();
+  const type = document.getElementById('newStepType').value;
+  if (!label) { toast('اكتبي وصف الخطوة', 'error'); return; }
+  stepIdCounter++;
+  currentSteps.push({ id: `step_${Date.now()}_${stepIdCounter}`, label, type });
+  document.getElementById('newStepLabel').value = '';
+  document.getElementById('addStepForm').hidden = true;
+  renderStepsList();
+}
+
 let currentMode = 'once';
 function setMode(mode) {
   currentMode = mode;
@@ -1049,6 +1334,15 @@ function openModal(task) {
   document.getElementById('f_task').value = task?.task_description || '';
   document.getElementById('f_supervisor').value = task?.supervisor_name || '';
   document.getElementById('f_notes').value = task?.notes || '';
+
+  populateAssigneeDropdown();
+  document.getElementById('f_assigned_to').value = task?.assigned_to || '';
+  document.getElementById('f_requires_evidence').checked = !!task?.requires_evidence;
+  currentSteps = task?.evidence_steps ? JSON.parse(JSON.stringify(task.evidence_steps)) : [];
+  renderStepsList();
+  onAssigneeChange();
+  onEvidenceCheckChange();
+  if (task?.assigned_to) document.getElementById('evidenceCheckRow').hidden = false;
 
   if (!task) {
     document.querySelectorAll('.day-chip').forEach(chip => chip.classList.add('active'));
@@ -1093,6 +1387,9 @@ async function saveTask(e) {
   saveBtn.disabled = true;
   saveBtn.textContent = 'جاري الحفظ...';
 
+  const assignedTo = document.getElementById('f_assigned_to').value || null;
+  const requiresEvidence = document.getElementById('f_requires_evidence').checked;
+
   const payload = {
     employee_name: document.getElementById('f_employee_name').value.trim(),
     employee_code: document.getElementById('f_employee_code').value.trim() || null,
@@ -1103,6 +1400,11 @@ async function saveTask(e) {
     notes: document.getElementById('f_notes').value.trim() || null,
     review_mode: currentMode,
     status: 'active',
+    assigned_to: assignedTo,
+    assigned_by: assignedTo ? currentUser.id : null,
+    created_by: currentUser.id,
+    requires_evidence: assignedTo ? requiresEvidence : false,
+    evidence_steps: (assignedTo && requiresEvidence && currentSteps.length) ? currentSteps : null,
   };
 
   if (currentMode === 'once') {
@@ -1144,20 +1446,124 @@ function resetSaveBtn() {
   saveBtn.textContent = 'حفظ المهمة';
 }
 
+function buildCompletionUpdate(task, now) {
+  if (task.review_mode === 'recurring') {
+    const nextDue = computeNextDueAfter(task, now);
+    return { last_reviewed_at: now.toISOString(), review_at: nextDue.toISOString(), actual_completed_at: now.toISOString() };
+  }
+  return { last_reviewed_at: now.toISOString(), status: 'done', actual_completed_at: now.toISOString() };
+}
+
+function plannedVsActualMessage(plannedAt, now) {
+  const diffMs = now.getTime() - new Date(plannedAt).getTime();
+  if (diffMs <= 0) return 'تم التنفيذ قبل الموعد المخطط ✅';
+  const mins = Math.round(diffMs / 60000);
+  const hrs = Math.round(diffMs / 3600000);
+  const text = mins < 60 ? `${mins} د` : `${hrs} س`;
+  return diffMs <= 15 * 60 * 1000 ? 'تم التنفيذ في الموعد المخطط تقريباً ✅' : `تم التنفيذ متأخر عن الموعد المخطط بـ ${text} ⚠️`;
+}
+
 async function markReviewed(id) {
   const task = tasks.find(t => t.id === id);
   if (!task) return;
   const now = new Date();
-  let update;
-  if (task.review_mode === 'recurring') {
-    const nextDue = computeNextDueAfter(task, now);
-    update = { last_reviewed_at: now.toISOString(), review_at: nextDue.toISOString() };
-  } else {
-    update = { last_reviewed_at: now.toISOString(), status: 'done' };
-  }
+  const plannedAt = task.review_at;
+  const update = buildCompletionUpdate(task, now);
   const { error } = await supabase.from('tasks').update(update).eq('id', id);
   if (error) { toast('حصل خطأ: ' + error.message, 'error'); return; }
-  toast('تم تسجيل المراجعة ✅', 'success');
+  toast(plannedVsActualMessage(plannedAt, now), 'success');
+  await loadTasks();
+}
+
+// ------------------------------------------------------------
+// نافذة رفع الدليل عند التنفيذ
+// ------------------------------------------------------------
+let evidenceTaskId = null;
+
+function openEvidenceModal(id) {
+  const task = tasks.find(t => t.id === id);
+  if (!task) return;
+  evidenceTaskId = id;
+
+  document.getElementById('evidenceTaskLabel').textContent = `${task.employee_name} — ${task.task_description}`;
+
+  const steps = task.evidence_steps || [];
+  const container = document.getElementById('evidenceFieldsContainer');
+  container.innerHTML = steps.map(s => {
+    if (s.type === 'image') {
+      return `<div class="form-row">
+        <label>${escapeHtml(s.label)}</label>
+        <input type="file" accept="image/*" capture="environment" data-evidence-field="${s.id}" data-evidence-type="image" required>
+      </div>`;
+    }
+    if (s.type === 'number') {
+      return `<div class="form-row">
+        <label>${escapeHtml(s.label)}</label>
+        <input type="number" data-evidence-field="${s.id}" data-evidence-type="number" required>
+      </div>`;
+    }
+    return `<div class="form-row">
+      <label>${escapeHtml(s.label)}</label>
+      <input type="text" data-evidence-field="${s.id}" data-evidence-type="text" required>
+    </div>`;
+  }).join('') || `<div class="hint">مفيش خطوات دليل محددة لهذه المهمة</div>`;
+
+  document.getElementById('evidenceModal').hidden = false;
+}
+
+function closeEvidenceModal() {
+  document.getElementById('evidenceModal').hidden = true;
+  document.getElementById('evidenceForm').reset();
+  evidenceTaskId = null;
+}
+
+async function submitEvidence(e) {
+  e.preventDefault();
+  const task = tasks.find(t => t.id === evidenceTaskId);
+  if (!task) return;
+
+  const submitBtn = document.getElementById('submitEvidenceBtn');
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'جاري الرفع...';
+
+  const fields = [...document.querySelectorAll('[data-evidence-field]')];
+  const values = {};
+
+  for (const field of fields) {
+    const stepId = field.dataset.evidenceField;
+    const type = field.dataset.evidenceType;
+
+    if (type === 'image') {
+      const file = field.files[0];
+      if (!file) { toast('ارفعي كل الصور المطلوبة', 'error'); submitBtn.disabled = false; submitBtn.textContent = 'تأكيد التنفيذ'; return; }
+      const path = `${task.id}/${stepId}_${Date.now()}_${file.name}`;
+      const { error: uploadError } = await supabase.storage.from('task-evidence').upload(path, file);
+      if (uploadError) {
+        toast('حصل خطأ في رفع الصورة: ' + uploadError.message, 'error');
+        submitBtn.disabled = false; submitBtn.textContent = 'تأكيد التنفيذ';
+        return;
+      }
+      const { data: urlData } = supabase.storage.from('task-evidence').getPublicUrl(path);
+      values[stepId] = urlData.publicUrl;
+    } else {
+      const val = field.value.trim();
+      if (!val) { toast('املي كل الحقول المطلوبة', 'error'); submitBtn.disabled = false; submitBtn.textContent = 'تأكيد التنفيذ'; return; }
+      values[stepId] = val;
+    }
+  }
+
+  const now = new Date();
+  const plannedAt = task.review_at;
+  const update = { ...buildCompletionUpdate(task, now), evidence_values: values };
+
+  const { error } = await supabase.from('tasks').update(update).eq('id', task.id);
+  submitBtn.disabled = false;
+  submitBtn.textContent = 'تأكيد التنفيذ';
+
+  if (error) { toast('حصل خطأ: ' + error.message, 'error'); return; }
+
+  toast(plannedVsActualMessage(plannedAt, now), 'success');
+  closeEvidenceModal();
   await loadTasks();
 }
 
@@ -1172,40 +1578,6 @@ async function deleteTask(id) {
 async function logout() {
   await supabase.auth.signOut();
   window.location.href = 'index.html';
-}
-
-let swRegistration = null;
-
-async function registerServiceWorker() {
-  if (!('serviceWorker' in navigator)) return;
-  try {
-    swRegistration = await navigator.serviceWorker.register('./sw.js');
-  } catch (err) {
-    console.error('تسجيل الـ Service Worker فشل:', err);
-  }
-}
-
-// بترسل إشعار فعلي — بتحاول عن طريق الـ Service Worker الأول (ده اللي بيشتغل على الموبايل)،
-// ولو مش متاح بترجع لـ new Notification() العادية (شغالة كويس على الديسكتوب)
-async function fireNotification(title, options) {
-  try {
-    if (!swRegistration) {
-      swRegistration = await navigator.serviceWorker?.ready?.catch(() => null);
-    }
-    if (swRegistration && swRegistration.showNotification) {
-      await swRegistration.showNotification(title, options);
-      return true;
-    }
-  } catch (err) {
-    console.error('showNotification فشل:', err);
-  }
-  try {
-    new Notification(title, options);
-    return true;
-  } catch (err) {
-    console.error('new Notification() فشل (متصفح الموبايل بيرفضها غالباً):', err);
-    return false;
-  }
 }
 
 function restoreNotifyState() { updateNotifyLabel(); }
@@ -1236,34 +1608,41 @@ async function toggleNotifications() {
     if (perm !== 'granted') return;
   }
 
-  await registerServiceWorker();
-
   // دايماً ابعتي إشعار تجريبي فوري عشان تحسي إن الزرار شغال فعلاً
-  const ok = await fireNotification('متابعة تنفيذ المهام', {
+  toast('الإشعارات مفعّلة 🔔', 'success');
+  new Notification('متابعة تنفيذ المهام', {
     body: 'ده تنبيه تجريبي — لما أي تاسك يستحق المراجعة هيوصلك تنبيه زي ده تلقائياً',
-    icon: undefined,
-    tag: 'test-notification',
   });
-  if (ok) toast('الإشعارات مفعّلة 🔔', 'success');
-  else toast('الإشعارات مسموحة بس المتصفح رفض يبعت — جرب تحمّلي الصفحة كـ PWA (أضيفيها للشاشة الرئيسية)', 'error');
   updateNotifyLabel();
 }
 
 function checkDueNotifications() {
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
-  tasks.forEach(async t => {
+  tasks.forEach(t => {
     const status = computeStatus(t);
     if (status.key !== 'late') return;
     const key = `${t.id}:${t.review_at}`;
     if (notifiedKeys.has(key)) return;
-    const ok = await fireNotification('⏰ تاسك مستحق للمراجعة', {
-      body: `${t.employee_name} — ${t.task_description}`,
-      tag: key,
-    });
-    if (ok) {
-      notifiedKeys.add(key);
-      localStorage.setItem('notifiedKeys', JSON.stringify([...notifiedKeys]));
+    new Notification('⏰ تاسك مستحق للمراجعة', { body: `${t.employee_name} — ${t.task_description}`, tag: key });
+    notifiedKeys.add(key);
+    localStorage.setItem('notifiedKeys', JSON.stringify([...notifiedKeys]));
+  });
+}
+
+let notifiedAssignments = new Set(JSON.parse(localStorage.getItem('notifiedAssignments') || '[]'));
+
+function checkNewAssignments() {
+  if (!currentUser) return;
+  tasks.forEach(t => {
+    if (t.assigned_to !== currentUser.id) return;
+    if (t.assigned_by === currentUser.id) return; // مش هتتبعتلك إشعار بمهمة انتِ كلفتيها لنفسك
+    if (notifiedAssignments.has(t.id)) return;
+
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification('📋 اتكلّفت بمهمة جديدة', { body: `${t.task_description}`, tag: `assign-${t.id}` });
     }
+    notifiedAssignments.add(t.id);
+    localStorage.setItem('notifiedAssignments', JSON.stringify([...notifiedAssignments]));
   });
 }
 
