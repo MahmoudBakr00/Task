@@ -102,3 +102,4 @@ textarea{resize:vertical;min-height:64px}
 .toast.error{border-inline-start-color:var(--status-late)}
 @keyframes toast-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 @media (max-width:860px){.board-header{display:none}.task-row{grid-template-columns:6px 1fr;grid-template-areas:"strip employee" "strip line" "strip task" "strip time" "strip actions";row-gap:8px;padding:16px}.status-strip{grid-area:strip}.cell-employee{grid-area:employee}.cell-line{grid-area:line}.cell-task{grid-area:task}.cell-time{grid-area:time}.cell-mode{display:none}.cell-actions{grid-area:actions;justify-content:flex-start}.stats-strip{grid-template-columns:repeat(2,1fr)}.form-row-2{grid-template-columns:1fr}}
+ 
