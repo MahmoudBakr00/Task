@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>متابعة تنفيذ المهام</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<link rel="manifest" href="manifest.json">
+</head>
+<body>
+
+<div class="app-shell">
+
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-mark">⏱</div>
+      <div class="brand-text">
+        <h1>متابعة تنفيذ المهام</h1>
+        <span id="userEmailLabel">—</span>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <button class="btn btn-ghost btn-sm" id="notifyBtn" title="تفعيل التنبيهات">
+        🔔 <span id="notifyLabel">تفعيل الإشعارات</span>
+      </button>
+      <button class="btn btn-primary" id="addTaskBtn">+ مهمة جديدة</button>
+      <button class="icon-btn" id="logoutBtn" title="تسجيل الخروج">⏻</button>
+    </div>
+  </div>
+
+  <div class="stats-strip">
+    <div class="stat-card late">
+      <div class="stat-num" id="statLate">0</div>
+      <div class="stat-label">متأخرة</div>
+    </div>
+    <div class="stat-card warn">
+      <div class="stat-num" id="statWarn">0</div>
+      <div class="stat-label">قربت تستحق</div>
+    </div>
+    <div class="stat-card ok">
+      <div class="stat-num" id="statOk">0</div>
+      <div class="stat-label">في الموعد</div>
+    </div>
+    <div class="stat-card total">
+      <div class="stat-num" id="statTotal">0</div>
+      <div class="stat-label">إجمالي المهام الشغالة</div>
+    </div>
+  </div>
+
+  <div class="filters">
+    <input type="text" class="search-box" id="searchInput" placeholder="بحث بالاسم أو الكود أو التاسك...">
+    <select id="filterLine"><option value="">كل الخطوط</option></select>
+    <select id="filterStage"><option value="">كل المراحل</option></select>
+    <select id="filterSupervisor"><option value="">كل المشرفين</option></select>
+    <select id="filterStatus">
+      <option value="">كل الحالات</option>
+      <option value="late">متأخرة</option>
+      <option value="warn">قربت تستحق</option>
+      <option value="ok">في الموعد</option>
+      <option value="done">منتهية</option>
+    </select>
+    <select id="sortBy">
+      <option value="review_at_asc">الأقرب استحقاقاً أولاً</option>
+      <option value="review_at_desc">الأبعد استحقاقاً أولاً</option>
+      <option value="created_desc">الأحدث إضافة</option>
+    </select>
+  </div>
+
+  <div class="board-panel">
+    <div class="board-header">
+      <div></div>
+      <div>الموظف</div>
+      <div>الخط / المرحلة</div>
+      <div>التاسك</div>
+      <div>المشرف</div>
+      <div>الموعد</div>
+      <div></div>
+    </div>
+    <div id="taskList"></div>
+    <div class="empty-state" id="emptyState" hidden>
+      <h3>لسه مفيش مهام مسجّلة</h3>
+      <p>دوس على "مهمة جديدة" عشان تبدأ تتابع أول تاسك</p>
+    </div>
+  </div>
+
+</div>
+
+<div class="modal-overlay" id="taskModal" hidden>
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modalTitle">مهمة جديدة</h2>
+      <button class="icon-btn" id="closeModalBtn">✕</button>
+    </div>
+    <form id="taskForm">
+      <div class="modal-body">
+
+        <div class="form-row-2">
+          <div class="form-row">
+            <label for="f_employee_name">اسم الموظف *</label>
+            <input type="text" id="f_employee_name" list="dl_employees" required>
+            <datalist id="dl_employees"></datalist>
+          </div>
+          <div class="form-row">
+            <label for="f_employee_code">كود الموظف</label>
+            <input type="text" id="f_employee_code">
+          </div>
+        </div>
+
+        <div class="form-row-2">
+          <div class="form-row">
+            <label for="f_line">الخط</label>
+            <input type="text" id="f_line" list="dl_lines">
+            <datalist id="dl_lines"></datalist>
+          </div>
+          <div class="form-row">
+            <label for="f_stage">المرحلة</label>
+            <input type="text" id="f_stage" list="dl_stages">
+            <datalist id="dl_stages"></datalist>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <label for="f_task">التاسك المطلوب *</label>
+          <textarea id="f_task" required placeholder="وصف التاسك المطلوب من الموظف..."></textarea>
+        </div>
+
+        <div class="form-row">
+          <label for="f_supervisor">اسم المشرف</label>
+          <input type="text" id="f_supervisor" list="dl_supervisors">
+          <datalist id="dl_supervisors"></datalist>
+        </div>
+
+        <div class="form-row">
+          <label>معاد المراجعة</label>
+          <div class="mode-toggle">
+            <button type="button" id="modeOnceBtn" class="active">معاد محدد</button>
+            <button type="button" id="modeRecurringBtn">تكرار دوري</button>
+          </div>
+        </div>
+
+        <div class="form-row" id="onceRow">
+          <label for="f_review_at">تاريخ ووقت المراجعة *</label>
+          <input type="datetime-local" id="f_review_at">
+        </div>
+
+        <div class="form-row" id="recurringRow" hidden>
+          <label>كل</label>
+          <div class="recurrence-row">
+            <input type="number" id="f_recurrence_value" min="1" value="2">
+            <select id="f_recurrence_unit">
+              <option value="minutes">دقيقة</option>
+              <option value="hours" selected>ساعة</option>
+              <option value="days">يوم</option>
+              <option value="weeks">أسبوع</option>
+            </select>
+          </div>
+          <div class="form-row" style="margin-top:8px;">
+            <label for="f_first_review_at">أول موعد مراجعة *</label>
+            <input type="datetime-local" id="f_first_review_at">
+          </div>
+          <div class="hint">بعد كل مراجعة، هيتحسب الموعد الجاي تلقائياً حسب التكرار</div>
+        </div>
+
+        <div class="form-row">
+          <label for="f_notes">ملاحظات</label>
+          <textarea id="f_notes" placeholder="أي ملاحظات إضافية..."></textarea>
+        </div>
+
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" id="cancelModalBtn">إلغاء</button>
+        <button type="submit" class="btn btn-primary" id="saveTaskBtn">حفظ المهمة</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="toast-stack" id="toastStack"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/config.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
