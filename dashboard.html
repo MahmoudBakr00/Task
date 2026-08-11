@@ -145,10 +145,12 @@ textarea{resize:vertical;min-height:64px}
 .time-day-header-num{font-family:var(--font-data)}
 .time-day-col{position:relative;cursor:pointer}
 .time-hour-line{border-bottom:1px solid var(--border-soft);box-sizing:border-box}
-.time-task-block{position:absolute;inset-inline:3px;height:38px;border-radius:5px;padding:2px 6px;font-size:10px;line-height:1.25;overflow:hidden;cursor:pointer;border-inline-start:3px solid var(--status-ok);background:var(--status-ok-bg);color:var(--text-primary);z-index:1;box-sizing:border-box}
+.time-task-block{position:absolute;height:38px;border-radius:5px;padding:2px 6px;font-size:10px;line-height:1.25;overflow:hidden;cursor:pointer;border-inline-start:3px solid var(--status-ok);background:var(--status-ok-bg);color:var(--text-primary);z-index:1;box-sizing:border-box}
 .time-task-block.late{border-inline-start-color:var(--status-late);background:var(--status-late-bg)}
 .time-task-block.warn{border-inline-start-color:var(--status-warn);background:var(--status-warn-bg)}
 .time-task-block:hover{filter:brightness(.96);z-index:3}
+.time-task-block.compact{font-size:9px;padding:2px 4px}
+.time-task-block.compact .time-task-time{display:block}
 .time-task-time{font-family:var(--font-data);font-weight:700}
 .time-now-line{position:absolute;inset-inline:0;height:2px;background:var(--status-late);z-index:4;pointer-events:none}
 .time-now-line::before{content:'';position:absolute;inset-inline-start:-4px;top:-3px;width:8px;height:8px;border-radius:50%;background:var(--status-late)}
@@ -401,6 +403,9 @@ const CHECK_NOTIFY_INTERVAL_MS = 60 * 1000;
 
   bindUI();
   restoreNotifyState();
+  if ('Notification' in window && Notification.permission === 'granted') {
+    await registerServiceWorker();
+  }
   await loadTasks();
   setInterval(refreshView, REFRESH_INTERVAL_MS);
   setInterval(checkDueNotifications, CHECK_NOTIFY_INTERVAL_MS);
@@ -894,22 +899,27 @@ function renderTimeGrid(days) {
     const headerClasses = ['time-day-header'];
     if (isToday) headerClasses.push('today');
 
-    // منع تداخل المهام اللي في نفس الوقت تقريباً فوق بعض
-    const placed = [];
-    dayTasks.slice().sort((a, b) => new Date(a.review_at) - new Date(b.review_at)).forEach(t => {
+    // المهام اللي وقتها متقارب/متطابق بتتحط جنب بعض (أعمدة) بدل ما تتراكب فوق بعض
+    const blockH = 40;
+    const placed = dayTasks.slice().sort((a, b) => new Date(a.review_at) - new Date(b.review_at)).map(t => {
       const dt = new Date(t.review_at);
       const minutesFromMidnight = dt.getHours() * 60 + dt.getMinutes();
-      let top = (minutesFromMidnight / 60) * ROW_H;
-      const blockH = 40;
-      const lastBottom = placed.length ? placed[placed.length - 1]._bottom : -999;
-      if (top < lastBottom + 4) top = lastBottom + 4;
-      placed.push({ t, top, _bottom: top + blockH });
+      const top = (minutesFromMidnight / 60) * ROW_H;
+      return { t, top };
     });
+    assignOverlapColumns(placed, blockH);
 
-    const blocks = placed.map(({ t, top }) => {
+    const blocks = placed.map(({ t, top, _col, _colCount }) => {
       const s = computeStatus(t).key;
       const time = new Date(t.review_at).toLocaleTimeString('ar-EG', { hour: 'numeric', minute: '2-digit' });
-      return `<div class="time-task-block ${s}" data-id="${t.id}" style="top:${top}px" title="${escapeHtml(t.employee_name)} — ${escapeHtml(t.task_description)}">
+      const colCount = _colCount || 1;
+      const col = _col || 0;
+      const leftPct = (col / colCount) * 100;
+      const widthPct = (100 / colCount);
+      const gap = colCount > 1 ? 2 : 3;
+      const style = `top:${top}px; inset-inline-start:calc(${leftPct}% + ${gap}px); width:calc(${widthPct}% - ${gap * 2}px);`;
+      const compact = colCount > 1 ? ' compact' : '';
+      return `<div class="time-task-block ${s}${compact}" data-id="${t.id}" style="${style}" title="${escapeHtml(t.employee_name)} — ${escapeHtml(t.task_description)}">
         <span class="time-task-time">${time}</span> ${escapeHtml(t.employee_name)} — ${escapeHtml(t.task_description)}
       </div>`;
     }).join('');
@@ -936,6 +946,40 @@ function renderTimeGrid(days) {
       </div>
     </div>
   </div>`;
+}
+
+// بتوزّع المهام اللي أوقاتها متداخلة على أعمدة جنب بعض بدل ما تتراكب فوق بعض
+// placed: [{t, top}] لازم تكون متسورتة حسب top تصاعدياً
+function assignOverlapColumns(placed, blockH) {
+  let clusterStart = 0;
+  let clusterEnd = -Infinity;
+  let clusterItems = [];
+
+  function flushCluster() {
+    if (!clusterItems.length) return;
+    const columns = []; // كل عنصر = آخر وقت "بتاع" العمود ده (top + blockH)
+    clusterItems.forEach(item => {
+      let colIndex = columns.findIndex(colBottom => item.top >= colBottom);
+      if (colIndex === -1) { columns.push(item.top + blockH); colIndex = columns.length - 1; }
+      else { columns[colIndex] = item.top + blockH; }
+      item._col = colIndex;
+    });
+    const colCount = columns.length;
+    clusterItems.forEach(item => { item._colCount = colCount; });
+    clusterItems = [];
+  }
+
+  placed.forEach(item => {
+    if (clusterItems.length === 0 || item.top < clusterEnd) {
+      clusterItems.push(item);
+      clusterEnd = Math.max(clusterEnd, item.top + blockH);
+    } else {
+      flushCluster();
+      clusterItems = [item];
+      clusterEnd = item.top + blockH;
+    }
+  });
+  flushCluster();
 }
 
 function scrollTimeGridToRelevantHour() {
@@ -1130,6 +1174,40 @@ async function logout() {
   window.location.href = 'index.html';
 }
 
+let swRegistration = null;
+
+async function registerServiceWorker() {
+  if (!('serviceWorker' in navigator)) return;
+  try {
+    swRegistration = await navigator.serviceWorker.register('./sw.js');
+  } catch (err) {
+    console.error('تسجيل الـ Service Worker فشل:', err);
+  }
+}
+
+// بترسل إشعار فعلي — بتحاول عن طريق الـ Service Worker الأول (ده اللي بيشتغل على الموبايل)،
+// ولو مش متاح بترجع لـ new Notification() العادية (شغالة كويس على الديسكتوب)
+async function fireNotification(title, options) {
+  try {
+    if (!swRegistration) {
+      swRegistration = await navigator.serviceWorker?.ready?.catch(() => null);
+    }
+    if (swRegistration && swRegistration.showNotification) {
+      await swRegistration.showNotification(title, options);
+      return true;
+    }
+  } catch (err) {
+    console.error('showNotification فشل:', err);
+  }
+  try {
+    new Notification(title, options);
+    return true;
+  } catch (err) {
+    console.error('new Notification() فشل (متصفح الموبايل بيرفضها غالباً):', err);
+    return false;
+  }
+}
+
 function restoreNotifyState() { updateNotifyLabel(); }
 
 function updateNotifyLabel() {
@@ -1158,24 +1236,34 @@ async function toggleNotifications() {
     if (perm !== 'granted') return;
   }
 
+  await registerServiceWorker();
+
   // دايماً ابعتي إشعار تجريبي فوري عشان تحسي إن الزرار شغال فعلاً
-  toast('الإشعارات مفعّلة 🔔', 'success');
-  new Notification('متابعة تنفيذ المهام', {
+  const ok = await fireNotification('متابعة تنفيذ المهام', {
     body: 'ده تنبيه تجريبي — لما أي تاسك يستحق المراجعة هيوصلك تنبيه زي ده تلقائياً',
+    icon: undefined,
+    tag: 'test-notification',
   });
+  if (ok) toast('الإشعارات مفعّلة 🔔', 'success');
+  else toast('الإشعارات مسموحة بس المتصفح رفض يبعت — جرب تحمّلي الصفحة كـ PWA (أضيفيها للشاشة الرئيسية)', 'error');
   updateNotifyLabel();
 }
 
 function checkDueNotifications() {
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
-  tasks.forEach(t => {
+  tasks.forEach(async t => {
     const status = computeStatus(t);
     if (status.key !== 'late') return;
     const key = `${t.id}:${t.review_at}`;
     if (notifiedKeys.has(key)) return;
-    new Notification('⏰ تاسك مستحق للمراجعة', { body: `${t.employee_name} — ${t.task_description}`, tag: key });
-    notifiedKeys.add(key);
-    localStorage.setItem('notifiedKeys', JSON.stringify([...notifiedKeys]));
+    const ok = await fireNotification('⏰ تاسك مستحق للمراجعة', {
+      body: `${t.employee_name} — ${t.task_description}`,
+      tag: key,
+    });
+    if (ok) {
+      notifiedKeys.add(key);
+      localStorage.setItem('notifiedKeys', JSON.stringify([...notifiedKeys]));
+    }
   });
 }
 
