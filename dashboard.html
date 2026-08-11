@@ -112,19 +112,20 @@ textarea{resize:vertical;min-height:64px}
 
 .month-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
 .month-day-header{text-align:center;font-size:11.5px;color:var(--text-faint);padding:6px 0;text-transform:uppercase;letter-spacing:.4px}
-.month-cell{background:var(--bg-elevated);border:1px solid var(--border-soft);border-radius:var(--radius-sm);min-height:78px;padding:8px;cursor:pointer;display:flex;flex-direction:column;gap:6px;transition:border-color .12s ease,background .12s ease}
+.month-cell{background:var(--bg-elevated);border:1px solid var(--border-soft);border-radius:var(--radius-sm);min-height:104px;padding:8px;cursor:pointer;display:flex;flex-direction:column;gap:5px;transition:border-color .12s ease,background .12s ease;overflow:hidden}
 .month-cell:hover{border-color:var(--text-faint)}
 .month-cell.other-month{opacity:.35}
 .month-cell.today{border-color:var(--accent)}
 .month-cell.selected{background:var(--bg-panel-2);border-color:var(--accent)}
 .month-cell-date{font-family:var(--font-data);font-size:12.5px;color:var(--text-muted);font-weight:600}
 .month-cell.today .month-cell-date{color:var(--accent)}
-.month-cell-dots{display:flex;gap:4px;flex-wrap:wrap}
-.month-dot{width:7px;height:7px;border-radius:50%}
-.month-dot.late{background:var(--status-late)}
-.month-dot.warn{background:var(--status-warn)}
-.month-dot.ok{background:var(--status-ok)}
-.month-cell-count{font-size:10.5px;color:var(--text-faint);margin-top:auto}
+.month-cell-chips{display:flex;flex-direction:column;gap:3px;overflow:hidden}
+.month-task-chip{font-size:10px;line-height:1.3;padding:3px 5px;border-radius:4px;background:var(--bg-panel-2);border-inline-start:3px solid var(--status-ok);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+.month-task-chip:hover{background:var(--bg-elevated)}
+.month-task-chip.late{border-inline-start-color:var(--status-late)}
+.month-task-chip.warn{border-inline-start-color:var(--status-warn)}
+.month-task-time{font-family:var(--font-data);color:var(--text-muted);margin-inline-end:3px}
+.month-cell-count{font-size:10px;color:var(--text-faint)}
 
 .week-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}
 .week-col{background:var(--bg-elevated);border:1px solid var(--border-soft);border-radius:var(--radius-sm);padding:10px;min-height:160px;cursor:pointer;display:flex;flex-direction:column;gap:8px}
@@ -134,7 +135,8 @@ textarea{resize:vertical;min-height:64px}
 .week-col-header{font-size:11.5px;color:var(--text-muted);text-align:center;font-weight:700}
 .week-col-date{font-family:var(--font-data);font-size:15px;text-align:center;font-weight:700}
 .week-col.today .week-col-date{color:var(--accent)}
-.week-task-chip{font-size:10.5px;padding:4px 6px;border-radius:4px;background:var(--bg-panel-2);border-inline-start:3px solid var(--status-ok)}
+.week-task-chip{font-size:10.5px;padding:4px 6px;border-radius:4px;background:var(--bg-panel-2);border-inline-start:3px solid var(--status-ok);cursor:pointer}
+.week-task-chip:hover{background:var(--bg-elevated)}
 .week-task-chip.late{border-inline-start-color:var(--status-late)}
 .week-task-chip.warn{border-inline-start-color:var(--status-warn)}
 .week-task-chip.done{border-inline-start-color:var(--status-done);opacity:.6}
@@ -150,8 +152,8 @@ textarea{resize:vertical;min-height:64px}
 
 @media (max-width:860px){
   .month-grid{gap:4px}
-  .month-cell{min-height:56px;padding:5px}
-  .month-cell-dots{gap:3px}
+  .month-cell{min-height:70px;padding:5px}
+  .month-task-chip{font-size:9px;padding:2px 4px}
   .week-grid{grid-template-columns:1fr;gap:6px}
   .calendar-mode-toggle{min-width:0;width:100%}
   .calendar-toolbar{flex-direction:column;align-items:stretch}
@@ -696,9 +698,15 @@ function renderMonthGrid() {
     const cellDate = new Date(gridStart);
     cellDate.setDate(gridStart.getDate() + i);
     const dayTasks = getTasksForDay(cellDate);
-    const statuses = dayTasks.map(t => computeStatus(t).key);
-    const dots = [...new Set(statuses)].filter(s => s !== 'done').slice(0, 3)
-      .map(s => `<span class="month-dot ${s}"></span>`).join('');
+
+    const MAX_CHIPS = 3;
+    const chips = dayTasks.slice(0, MAX_CHIPS).map(t => {
+      const s = computeStatus(t).key;
+      const time = new Date(t.review_at).toLocaleTimeString('ar-EG', { hour: 'numeric', minute: '2-digit' });
+      const label = `${escapeHtml(t.employee_name)} — ${escapeHtml(t.task_description)}`;
+      return `<div class="month-task-chip ${s}" data-id="${t.id}" title="${label}"><span class="month-task-time">${time}</span> ${label}</div>`;
+    }).join('');
+    const more = dayTasks.length > MAX_CHIPS ? `<div class="month-cell-count">+${dayTasks.length - MAX_CHIPS} كمان</div>` : '';
 
     const classes = ['month-cell'];
     if (cellDate.getMonth() !== month) classes.push('other-month');
@@ -707,8 +715,8 @@ function renderMonthGrid() {
 
     html += `<div class="${classes.join(' ')}" data-date="${dateKey(cellDate)}">
       <div class="month-cell-date">${cellDate.getDate()}</div>
-      <div class="month-cell-dots">${dots}</div>
-      ${dayTasks.length ? `<div class="month-cell-count">${dayTasks.length} مهمة</div>` : ''}
+      <div class="month-cell-chips">${chips}</div>
+      ${more}
     </div>`;
   }
   return html;
@@ -729,7 +737,7 @@ function renderWeekGrid() {
 
     const chips = dayTasks.slice(0, 4).map(t => {
       const s = computeStatus(t).key;
-      return `<div class="week-task-chip ${s}">${escapeHtml(t.employee_name)} — ${escapeHtml(t.task_description).slice(0, 22)}${t.task_description.length > 22 ? '…' : ''}</div>`;
+      return `<div class="week-task-chip ${s}" data-id="${t.id}">${escapeHtml(t.employee_name)} — ${escapeHtml(t.task_description).slice(0, 22)}${t.task_description.length > 22 ? '…' : ''}</div>`;
     }).join('');
     const more = dayTasks.length > 4 ? `<div class="week-task-more">+${dayTasks.length - 4} كمان</div>` : '';
 
@@ -744,7 +752,14 @@ function renderWeekGrid() {
 
 function bindCalendarCellEvents() {
   document.querySelectorAll('[data-date]').forEach(el => {
-    el.addEventListener('click', () => {
+    el.addEventListener('click', (e) => {
+      const chip = e.target.closest('.month-task-chip, .week-task-chip');
+      if (chip && chip.dataset.id) {
+        e.stopPropagation();
+        const t = tasks.find(x => x.id === chip.dataset.id);
+        if (t) openModal(t);
+        return;
+      }
       const [y, m, day] = el.dataset.date.split('-').map(Number);
       selectedCalendarDate = new Date(y, m - 1, day);
       if (calendarMode !== 'day') renderCalendar();
