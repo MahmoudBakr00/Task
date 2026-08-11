@@ -258,13 +258,8 @@ const REFRESH_INTERVAL_MS = 30 * 1000;
 const CHECK_NOTIFY_INTERVAL_MS = 60 * 1000;
 
 (async function init() {
-  const { data } = await supabase.auth.getSession();
-  if (!data.session) {
-    window.location.href = 'index.html';
-    return;
-  }
-  currentUser = data.session.user;
-  document.getElementById('userEmailLabel').textContent = currentUser.email || 'أدمن';
+  document.getElementById('userEmailLabel').textContent = 'بدون تسجيل دخول';
+  document.getElementById('logoutBtn').style.display = 'none';
 
   bindUI();
   restoreNotifyState();
