@@ -85,6 +85,30 @@ body{background-image:radial-gradient(circle at 15% 0%,rgba(0,120,212,.04),trans
 .autocomplete-item:hover,.autocomplete-item.highlighted{background:var(--bg-elevated)}
 .autocomplete-item .code-hint{color:var(--text-muted);font-size:11px;margin-inline-start:6px}
 .autocomplete-empty{padding:9px 12px;font-size:12.5px;color:var(--text-faint)}
+.day-tasks-stack{display:flex;flex-direction:column;gap:10px}
+.day-task-card{background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 14px;border-inline-start:4px solid var(--status-ok);cursor:pointer;transition:background .12s ease}
+.day-task-card:hover{background:var(--bg-panel-2)}
+.day-task-card.late{border-inline-start-color:var(--status-late)}
+.day-task-card.warn{border-inline-start-color:var(--status-warn)}
+.day-task-card.done{border-inline-start-color:var(--status-done);opacity:.65}
+.day-task-card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.day-task-card-name{font-weight:700;font-size:14px}
+.day-task-card-time{font-family:var(--font-data);font-size:12px;color:var(--text-muted);white-space:nowrap;flex-shrink:0}
+.day-task-card-desc{font-size:13px;color:var(--text-primary);margin-top:4px;line-height:1.4}
+.day-task-card-meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;font-size:11px;color:var(--text-muted)}
+.history-row{display:grid;grid-template-columns:6px 1.3fr 1.6fr 1fr 1fr auto;gap:12px;align-items:center;padding:14px 20px;border-bottom:1px solid var(--border-soft)}
+.history-row:last-child{border-bottom:none}
+.history-strip{align-self:stretch;border-radius:4px;background:var(--status-ok)}
+.history-strip.late{background:var(--status-late)}
+.history-row .h-name{font-weight:700;font-size:13.5px}
+.history-row .h-meta{font-size:11.5px;color:var(--text-muted);margin-top:3px}
+.history-row .h-task{font-size:13px;line-height:1.4}
+.history-row .h-times{font-size:11.5px;color:var(--text-muted);line-height:1.6}
+.history-row .h-times b{color:var(--text-primary);font-family:var(--font-data);font-weight:600}
+@media (max-width:860px){
+  .history-row{grid-template-columns:6px 1fr;grid-template-areas:"strip name" "strip task" "strip times" "strip badge";row-gap:6px;padding:14px}
+  .history-strip{grid-area:strip}
+}
 .preview-row{display:grid;grid-template-columns:auto 1fr auto auto;gap:10px;align-items:center;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;font-size:13px}
 .preview-row select{width:auto;min-width:110px;padding:5px 8px;font-size:12px}
 .manage-row{display:grid;grid-template-columns:1fr auto auto auto;gap:10px;align-items:center;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px 12px;font-size:13px}
@@ -278,6 +302,7 @@ textarea{resize:vertical;min-height:64px}
   <div class="view-tabs">
     <button class="view-tab active" id="viewTabList">📋 قائمة المهام</button>
     <button class="view-tab" id="viewTabCalendar">📅 التقويم</button>
+    <button class="view-tab" id="viewTabHistory">📜 السجل</button>
   </div>
 
   <div id="listView">
@@ -329,15 +354,25 @@ textarea{resize:vertical;min-height:64px}
       </div>
       <div id="calendarBody"></div>
     </div>
+  </div>
 
-    <div class="board-panel calendar-day-panel" id="calendarDayPanel">
-      <div class="calendar-day-panel-header">
-        <h3 id="calendarDayTitle">مهام اليوم</h3>
-      </div>
-      <div id="calendarDayList"></div>
-      <div class="empty-state" id="calendarDayEmpty" hidden>
-        <h3>مفيش مهام في اليوم ده</h3>
-        <p>اختاري يوم تاني أو أضيفي مهمة جديدة</p>
+  <div id="historyView" hidden>
+    <div class="filters">
+      <input type="text" class="search-box" id="histSearchInput" placeholder="بحث بالتاسك أو الخط...">
+      <select id="histPersonFilter"><option value="">كل الأشخاص</option></select>
+      <select id="histOnTimeFilter">
+        <option value="">في الميعاد ومتأخر</option>
+        <option value="ontime">في الميعاد بس</option>
+        <option value="late">متأخر بس</option>
+      </select>
+      <input type="date" id="histFromDate" title="من تاريخ">
+      <input type="date" id="histToDate" title="لحد تاريخ">
+    </div>
+    <div class="board-panel">
+      <div id="historyList"></div>
+      <div class="empty-state" id="historyEmpty" hidden>
+        <h3>مفيش سجل لسه</h3>
+        <p>أي مهمة تتنفذ هتظهر هنا تلقائياً</p>
       </div>
     </div>
   </div>
@@ -441,6 +476,21 @@ textarea{resize:vertical;min-height:64px}
     </div>
     <div class="modal-footer">
       <button type="button" class="btn btn-ghost" id="closeManageEmployeesBtn2">إغلاق</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="dayTasksModal" hidden>
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="dayTasksTitle">مهام اليوم</h2>
+      <div style="display:flex;gap:8px;">
+        <button class="icon-btn" id="dayTasksAddBtn" title="إضافة مهمة لليوم ده">+</button>
+        <button class="icon-btn" id="closeDayTasksModalBtn">✕</button>
+      </div>
+    </div>
+    <div class="modal-body" style="max-height:70vh;overflow-y:auto;">
+      <div id="dayTasksList" class="day-tasks-stack"></div>
     </div>
   </div>
 </div>
@@ -1178,6 +1228,11 @@ function bindUI() {
 
   document.getElementById('viewTabList').addEventListener('click', () => switchView('list'));
   document.getElementById('viewTabCalendar').addEventListener('click', () => switchView('calendar'));
+  document.getElementById('viewTabHistory').addEventListener('click', () => switchView('history'));
+  ['histSearchInput', 'histPersonFilter', 'histOnTimeFilter', 'histFromDate', 'histToDate'].forEach(id => {
+    document.getElementById(id).addEventListener('input', renderHistoryList);
+    document.getElementById(id).addEventListener('change', renderHistoryList);
+  });
   document.getElementById('calPrevBtn').addEventListener('click', () => navigateCalendar(-1));
   document.getElementById('calNextBtn').addEventListener('click', () => navigateCalendar(1));
   document.getElementById('calTodayBtn').addEventListener('click', () => { calendarDate = new Date(); selectedCalendarDate = new Date(); renderCalendar(); });
@@ -1224,7 +1279,13 @@ function bindUI() {
   document.getElementById('confirmStepBtn').addEventListener('click', addEvidenceStep);
 
   bindTaskRowActions('taskList');
-  bindTaskRowActions('calendarDayList');
+  document.getElementById('dayTasksAddBtn').addEventListener('click', () => {
+    const d = dayTasksModalDate;
+    closeDayTasksModal();
+    openModal(null, d);
+  });
+  document.getElementById('closeDayTasksModalBtn').addEventListener('click', closeDayTasksModal);
+  document.getElementById('dayTasksModal').addEventListener('click', (e) => { if (e.target.id === 'dayTasksModal') closeDayTasksModal(); });
 }
 
 function bindTaskRowActions(containerId) {
@@ -1260,9 +1321,104 @@ function switchView(view) {
   currentView = view;
   document.getElementById('viewTabList').classList.toggle('active', view === 'list');
   document.getElementById('viewTabCalendar').classList.toggle('active', view === 'calendar');
+  document.getElementById('viewTabHistory').classList.toggle('active', view === 'history');
   document.getElementById('listView').hidden = view !== 'list';
   document.getElementById('calendarView').hidden = view !== 'calendar';
+  document.getElementById('historyView').hidden = view !== 'history';
   if (view === 'calendar') renderCalendar();
+  if (view === 'history') loadHistory();
+}
+
+// ------------------------------------------------------------
+// سجل تنفيذ المهام
+// ------------------------------------------------------------
+let historyRecords = [];
+
+async function loadHistory() {
+  let query = supabase.from('task_completions').select('*').order('actual_completed_at', { ascending: false }).limit(500);
+
+  if (currentProfile.role === 'technician') {
+    query = query.eq('completed_by', currentUser.id);
+  }
+
+  const { data, error } = await query;
+  if (error) { toast('حصل خطأ في تحميل السجل: ' + error.message, 'error'); return; }
+  historyRecords = data || [];
+  populateHistoryPersonFilter();
+  renderHistoryList();
+}
+
+function populateHistoryPersonFilter() {
+  const select = document.getElementById('histPersonFilter');
+  const current = select.value;
+  const names = [...new Set(historyRecords.map(r => r.completed_by_name).filter(Boolean))].sort();
+  select.innerHTML = '<option value="">كل الأشخاص</option>' + names.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
+  select.value = names.includes(current) ? current : '';
+}
+
+function historyStatus(planned, actual) {
+  if (!planned) return { key: 'ontime', label: 'مفيش موعد مخطط' };
+  const diff = new Date(actual).getTime() - new Date(planned).getTime();
+  if (diff <= 15 * 60 * 1000) return { key: 'ontime', label: 'في الميعاد' };
+  const mins = Math.round(diff / 60000);
+  const text = mins < 60 ? `${mins} د` : `${Math.round(diff / 3600000)} س`;
+  return { key: 'late', label: `متأخر بـ ${text}` };
+}
+
+function renderHistoryList() {
+  const search = document.getElementById('histSearchInput').value.trim().toLowerCase();
+  const person = document.getElementById('histPersonFilter').value;
+  const onTimeFilter = document.getElementById('histOnTimeFilter').value;
+  const fromDate = document.getElementById('histFromDate').value;
+  const toDate = document.getElementById('histToDate').value;
+
+  let list = historyRecords.filter(r => {
+    if (search) {
+      const hay = `${r.task_description || ''} ${r.line || ''} ${r.employee_name || ''}`.toLowerCase();
+      if (!hay.includes(search)) return false;
+    }
+    if (person && r.completed_by_name !== person) return false;
+    if (fromDate && new Date(r.actual_completed_at) < new Date(fromDate + 'T00:00:00')) return false;
+    if (toDate && new Date(r.actual_completed_at) > new Date(toDate + 'T23:59:59')) return false;
+    if (onTimeFilter) {
+      const s = historyStatus(r.planned_at, r.actual_completed_at);
+      if (onTimeFilter === 'ontime' && s.key !== 'ontime') return false;
+      if (onTimeFilter === 'late' && s.key !== 'late') return false;
+    }
+    return true;
+  });
+
+  const container = document.getElementById('historyList');
+  const empty = document.getElementById('historyEmpty');
+
+  if (list.length === 0) {
+    container.innerHTML = '';
+    empty.hidden = false;
+    return;
+  }
+  empty.hidden = true;
+
+  container.innerHTML = list.map(r => {
+    const status = historyStatus(r.planned_at, r.actual_completed_at);
+    return `
+    <div class="history-row">
+      <div class="history-strip ${status.key === 'late' ? 'late' : ''}"></div>
+      <div>
+        <div class="h-name">${escapeHtml(r.employee_name || '—')}</div>
+        <div class="h-meta">${r.line ? `📍 ${escapeHtml(r.line)}` : ''}</div>
+      </div>
+      <div class="h-task">${escapeHtml(r.task_description || '')}</div>
+      <div class="h-times">
+        <div>مخطط: <b>${r.planned_at ? formatExact(r.planned_at) : '—'}</b></div>
+        <div>فعلي: <b>${formatExact(r.actual_completed_at)}</b></div>
+      </div>
+      <div>
+        <div class="h-meta">بواسطة: ${escapeHtml(r.completed_by_name || '—')}</div>
+        ${r.assigned_to_name ? `<div class="h-meta">🎯 ${escapeHtml(r.assigned_to_name)}</div>` : ''}
+      </div>
+      <span class="badge ${status.key === 'late' ? 'late' : 'ok'}">${status.label}</span>
+    </div>`;
+  }).join('');
 }
 
 function setCalendarMode(mode) {
@@ -1423,7 +1579,6 @@ function renderCalendar() {
   }
 
   bindCalendarCellEvents();
-  renderCalendarDayPanel(selectedCalendarDate);
 
   if (calendarMode !== 'month') scrollTimeGridToRelevantHour();
 }
@@ -1534,6 +1689,8 @@ function scrollTimeGridToRelevantHour() {
   scrollBody.scrollTop = targetHour * ROW_H;
 }
 
+let dayTasksModalDate = null;
+
 function bindCalendarCellEvents() {
   document.querySelectorAll('[data-date]').forEach(el => {
     el.addEventListener('click', (e) => {
@@ -1545,33 +1702,57 @@ function bindCalendarCellEvents() {
         return;
       }
       const [y, m, day] = el.dataset.date.split('-').map(Number);
-      selectedCalendarDate = new Date(y, m - 1, day);
-      if (el.classList.contains('time-day-header') || el.classList.contains('time-day-col')) {
-        calendarDate = new Date(selectedCalendarDate);
-        setCalendarMode('day');
-        return;
+      const clickedDate = new Date(y, m - 1, day);
+      selectedCalendarDate = clickedDate;
+
+      const dayTasks = getTasksForDay(clickedDate);
+      if (dayTasks.length === 0) {
+        openModal(null, clickedDate);
+      } else {
+        openDayTasksModal(clickedDate, dayTasks);
       }
-      if (calendarMode !== 'day') renderCalendar();
-      else renderCalendarDayPanel(selectedCalendarDate);
     });
   });
 }
 
-function renderCalendarDayPanel(d) {
-  const list = getTasksForDay(d);
-  const container = document.getElementById('calendarDayList');
-  const empty = document.getElementById('calendarDayEmpty');
-  const title = document.getElementById('calendarDayTitle');
+function dayTaskCardTemplate(t) {
+  const status = computeStatus(t);
+  const time = new Date(t.review_at).toLocaleTimeString('ar-EG', { hour: 'numeric', minute: '2-digit' });
+  return `<div class="day-task-card ${status.key}" data-day-task-id="${t.id}">
+    <div class="day-task-card-top">
+      <span class="day-task-card-name">${escapeHtml(t.employee_name)}</span>
+      <span class="day-task-card-time">${time}</span>
+    </div>
+    <div class="day-task-card-desc">${escapeHtml(t.task_description)}</div>
+    <div class="day-task-card-meta">
+      ${t.line ? `<span>📍 ${escapeHtml(t.line)}</span>` : ''}
+      ${t.review_mode === 'recurring' ? '<span>🔁 متكررة</span>' : ''}
+      ${t.requires_evidence ? '<span>📋 يتطلب دليل</span>' : ''}
+    </div>
+  </div>`;
+}
 
-  title.textContent = `مهام يوم ${d.getDate()} ${AR_MONTHS[d.getMonth()]} (${AR_DAYS_FULL[d.getDay()]})`;
+function openDayTasksModal(date, dayTasks) {
+  dayTasks = dayTasks || getTasksForDay(date);
+  dayTasksModalDate = date;
 
-  if (list.length === 0) {
-    container.innerHTML = '';
-    empty.hidden = false;
-    return;
-  }
-  empty.hidden = true;
-  container.innerHTML = list.map(t => rowTemplate(t)).join('');
+  document.getElementById('dayTasksTitle').textContent = `مهام يوم ${date.getDate()} ${AR_MONTHS[date.getMonth()]} (${AR_DAYS_FULL[date.getDay()]})`;
+
+  const container = document.getElementById('dayTasksList');
+  container.innerHTML = dayTasks.map(t => dayTaskCardTemplate(t)).join('');
+  container.querySelectorAll('[data-day-task-id]').forEach(card => {
+    card.addEventListener('click', () => {
+      const t = tasks.find(x => x.id === card.dataset.dayTaskId);
+      closeDayTasksModal();
+      if (t) openModal(t);
+    });
+  });
+
+  document.getElementById('dayTasksModal').hidden = false;
+}
+
+function closeDayTasksModal() {
+  document.getElementById('dayTasksModal').hidden = true;
 }
 
 // ------------------------------------------------------------
@@ -1688,7 +1869,7 @@ function setMode(mode) {
   document.getElementById('recurringRow').hidden = mode !== 'recurring';
 }
 
-function openModal(task) {
+function openModal(task, prefillDate) {
   editingTaskId = task ? task.id : null;
   document.getElementById('modalTitle').textContent = task ? 'تعديل المهمة' : 'مهمة جديدة';
   document.getElementById('f_employee_name').value = task?.employee_name || '';
@@ -1717,7 +1898,13 @@ function openModal(task) {
   setMode(mode);
 
   if (mode === 'once') {
-    document.getElementById('f_review_at').value = task ? toLocalInput(task.review_at) : '';
+    if (task) {
+      document.getElementById('f_review_at').value = toLocalInput(task.review_at);
+    } else if (prefillDate) {
+      document.getElementById('f_review_at').value = toLocalInput(defaultTimeOnDate(prefillDate));
+    } else {
+      document.getElementById('f_review_at').value = '';
+    }
   } else {
     document.getElementById('f_recurrence_value').value = task?.recurrence_value || 2;
     document.getElementById('f_recurrence_unit').value = task?.recurrence_unit || 'hours';
@@ -1737,6 +1924,18 @@ function closeModal() {
   document.getElementById('taskModal').hidden = true;
   document.getElementById('taskForm').reset();
   editingTaskId = null;
+}
+
+function defaultTimeOnDate(date) {
+  const d = new Date(date);
+  const now = new Date();
+  if (isSameDay(d, now)) {
+    d.setHours(now.getHours(), now.getMinutes() < 30 ? 30 : 0, 0, 0);
+    if (now.getMinutes() >= 30) d.setHours(now.getHours() + 1, 0, 0, 0);
+  } else {
+    d.setHours(9, 0, 0, 0);
+  }
+  return d;
 }
 
 function toLocalInput(iso) {
@@ -1827,6 +2026,26 @@ function plannedVsActualMessage(plannedAt, now) {
   return diffMs <= 15 * 60 * 1000 ? 'تم التنفيذ في الموعد المخطط تقريباً ✅' : `تم التنفيذ متأخر عن الموعد المخطط بـ ${text} ⚠️`;
 }
 
+async function logCompletion(task, plannedAt, now, evidenceValues) {
+  const assignedProfile = task.assigned_to ? allProfiles.find(p => p.id === task.assigned_to) : null;
+  const { error } = await supabase.from('task_completions').insert({
+    task_id: task.id,
+    employee_name: task.employee_name,
+    task_description: task.task_description,
+    line: task.line,
+    stage: task.stage,
+    assigned_to: task.assigned_to || null,
+    assigned_to_name: assignedProfile ? assignedProfile.full_name : null,
+    completed_by: currentUser.id,
+    completed_by_name: currentProfile.full_name,
+    planned_at: plannedAt,
+    actual_completed_at: now.toISOString(),
+    requires_evidence: !!task.requires_evidence,
+    evidence_values: evidenceValues || null,
+  });
+  if (error) console.warn('تعذّر تسجيل السجل:', error.message);
+}
+
 async function markReviewed(id) {
   const task = tasks.find(t => t.id === id);
   if (!task) return;
@@ -1835,6 +2054,7 @@ async function markReviewed(id) {
   const update = buildCompletionUpdate(task, now);
   const { error } = await supabase.from('tasks').update(update).eq('id', id);
   if (error) { toast('حصل خطأ: ' + error.message, 'error'); return; }
+  await logCompletion(task, plannedAt, now, null);
   toast(plannedVsActualMessage(plannedAt, now), 'success');
   await loadTasks();
 }
@@ -1926,6 +2146,7 @@ async function submitEvidence(e) {
 
   if (error) { toast('حصل خطأ: ' + error.message, 'error'); return; }
 
+  await logCompletion(task, plannedAt, now, values);
   toast(plannedVsActualMessage(plannedAt, now), 'success');
   closeEvidenceModal();
   await loadTasks();
