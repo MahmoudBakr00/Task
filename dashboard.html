@@ -646,8 +646,16 @@ textarea{resize:vertical;min-height:64px}
           </div>
         </div>
         <div class="form-row" id="onceRow">
-          <label for="f_review_at">تاريخ ووقت المراجعة *</label>
-          <input type="datetime-local" id="f_review_at">
+          <label>مواعيد المراجعة</label>
+          <div id="customDatesList" class="steps-list"></div>
+          <div class="form-row-2" style="margin-top:8px;align-items:end;">
+            <div class="form-row">
+              <label for="newCustomDateInput">أضف موعد</label>
+              <input type="datetime-local" id="newCustomDateInput">
+            </div>
+            <button type="button" class="btn btn-primary btn-sm" id="addCustomDateBtn">+ إضافة موعد</button>
+          </div>
+          <div class="hint">ضيف موعد واحد أو أكتر — لو أكتر من موعد، هينتقل تلقائي للي بعده بعد كل مراجعة، وبعد آخر واحد تتقفل المهمة</div>
         </div>
         <div class="form-row" id="recurringRow" hidden>
           <label>كل</label>
@@ -691,6 +699,7 @@ textarea{resize:vertical;min-height:64px}
           </div>
           <div class="hint">لو حددت "لحد الساعة" أصغر من "من الساعة"، هيتفهم تلقائي إنها وردية ليلية بتعدي نص الليل (زي من 10م لحد 6ص)</div>
         </div>
+
         <div class="form-row">
           <label for="f_notes">ملاحظات</label>
           <textarea id="f_notes" placeholder="أي ملاحظات إضافية..."></textarea>
@@ -1260,7 +1269,9 @@ function canEditTask(task) {
 function rowTemplate(t) {
   const status = computeStatus(t);
   const pulse = status.key === 'late' ? 'pulse' : '';
-  const modeLabel = t.review_mode === 'recurring' ? `كل ${t.recurrence_value} ${unitLabel(t.recurrence_unit)}` : 'مرة واحدة';
+  const modeLabel = t.review_mode === 'recurring' ? `كل ${t.recurrence_value} ${unitLabel(t.recurrence_unit)}`
+    : t.review_mode === 'custom' ? `مواعيد محددة (${(t.custom_dates || []).length})`
+    : 'مرة واحدة';
   const isAnchor = t._isAnchor !== false; // true للمهام العادية وللموعد الفعلي القادم من المتكررة
 
   const assignee = t.assigned_to ? allProfiles.find(p => p.id === t.assigned_to) : null;
@@ -1414,6 +1425,7 @@ function bindUI() {
   });
   document.getElementById('f_requires_evidence').addEventListener('change', onEvidenceCheckChange);
   document.getElementById('addStepBtn').addEventListener('click', () => { document.getElementById('addStepForm').hidden = false; });
+  document.getElementById('addCustomDateBtn').addEventListener('click', addCustomDate);
   document.getElementById('cancelStepBtn').addEventListener('click', () => { document.getElementById('addStepForm').hidden = true; });
   document.getElementById('confirmStepBtn').addEventListener('click', addEvidenceStep);
 
@@ -1652,6 +1664,13 @@ const MAX_OCCURRENCES = 20000; // حماية من التكرارات الصغي�
 function getOccurrences(t, rangeStart, rangeEnd) {
   const anchor = new Date(t.review_at);
   const iv = intervalMs(t);
+
+  if (t.review_mode === 'custom') {
+    const dates = (t.custom_dates || []).map(d => new Date(d));
+    return dates
+      .filter(d => d >= rangeStart && d <= rangeEnd)
+      .map(d => ({ date: d, isAnchor: d.getTime() === anchor.getTime() }));
+  }
 
   if (t.review_mode !== 'recurring' || !iv) {
     return (anchor >= rangeStart && anchor <= rangeEnd) ? [{ date: anchor, isAnchor: true }] : [];
@@ -2023,6 +2042,38 @@ function openStatDrilldown(type) {
 // تكليف الموظف + بنّاء خطوات الدليل
 // ------------------------------------------------------------
 let currentSteps = [];
+let currentCustomDates = []; // مصفوفة ISO لمواعيد المراجعة (وحدة أو أكتر)
+
+function renderCustomDatesList() {
+  const container = document.getElementById('customDatesList');
+  const sorted = currentCustomDates.slice().sort();
+  if (sorted.length === 0) {
+    container.innerHTML = `<div class="hint">لسه مفيش مواعيد مضافة</div>`;
+    return;
+  }
+  container.innerHTML = sorted.map(iso => `
+    <div class="step-item">
+      <span>${formatExact(iso)}</span>
+      <button type="button" class="remove-step-btn" data-remove-date="${iso}">✕</button>
+    </div>
+  `).join('');
+  container.querySelectorAll('[data-remove-date]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      currentCustomDates = currentCustomDates.filter(d => d !== btn.dataset.removeDate);
+      renderCustomDatesList();
+    });
+  });
+}
+
+function addCustomDate() {
+  const input = document.getElementById('newCustomDateInput');
+  if (!input.value) { toast('اختار تاريخ ووقت الموعد', 'error'); return; }
+  const iso = new Date(input.value).toISOString();
+  if (!currentCustomDates.includes(iso)) currentCustomDates.push(iso);
+  input.value = '';
+  renderCustomDatesList();
+}
+
 let stepIdCounter = 0;
 
 function populateAssigneeDropdown() {
@@ -2216,19 +2267,21 @@ function openModal(task, prefillDate, duplicateSource, personalMode) {
     document.getElementById('f_recurrence_end_time').value = '';
   }
 
-  const mode = src?.review_mode || 'once';
+  const mode = (src?.review_mode === 'recurring') ? 'recurring' : 'once';
   setMode(mode);
 
   if (mode === 'once') {
-    if (task) {
-      document.getElementById('f_review_at').value = toLocalInput(task.review_at);
-    } else if (duplicateSource) {
-      document.getElementById('f_review_at').value = toLocalInput(duplicateSource.review_at);
+    if (src && src.review_mode === 'custom' && Array.isArray(src.custom_dates) && src.custom_dates.length) {
+      currentCustomDates = src.custom_dates.slice().sort();
+    } else if (src) {
+      currentCustomDates = [src.review_at];
     } else if (prefillDate) {
-      document.getElementById('f_review_at').value = toLocalInput(defaultTimeOnDate(prefillDate));
+      currentCustomDates = [defaultTimeOnDate(prefillDate).toISOString()];
     } else {
-      document.getElementById('f_review_at').value = '';
+      currentCustomDates = [];
     }
+    document.getElementById('newCustomDateInput').value = '';
+    renderCustomDatesList();
   } else {
     document.getElementById('f_recurrence_value').value = src?.recurrence_value || 2;
     document.getElementById('f_recurrence_unit').value = src?.recurrence_unit || 'hours';
@@ -2313,13 +2366,20 @@ async function saveTask(e) {
   };
 
   if (currentMode === 'once') {
-    const val = document.getElementById('f_review_at').value;
-    if (!val) { toast('حدد معاد المراجعة', 'error'); resetSaveBtn(); return; }
-    payload.review_at = new Date(val).toISOString();
+    if (currentCustomDates.length === 0) { toast('ضيف موعد واحد على الأقل', 'error'); resetSaveBtn(); return; }
+    const sortedDates = currentCustomDates.slice().sort();
+    payload.review_at = sortedDates[0];
     payload.recurrence_value = null;
     payload.recurrence_unit = null;
     payload.recurrence_days = null;
     payload.recurrence_end_time = null;
+    if (sortedDates.length === 1) {
+      payload.review_mode = 'once';
+      payload.custom_dates = null;
+    } else {
+      payload.review_mode = 'custom';
+      payload.custom_dates = sortedDates;
+    }
   } else {
     const dateVal = document.getElementById('f_recurrence_start_date').value;
     const timeVal = document.getElementById('f_recurrence_start_time').value;
@@ -2356,6 +2416,15 @@ function buildCompletionUpdate(task, now) {
   if (task.review_mode === 'recurring') {
     const nextDue = computeNextDueAfter(task, now);
     return { last_reviewed_at: now.toISOString(), review_at: nextDue.toISOString(), actual_completed_at: now.toISOString() };
+  }
+  if (task.review_mode === 'custom') {
+    const dates = (task.custom_dates || []).map(d => new Date(d)).sort((a, b) => a - b);
+    const currentTime = new Date(task.review_at).getTime();
+    const next = dates.find(d => d.getTime() > currentTime);
+    if (next) {
+      return { last_reviewed_at: now.toISOString(), review_at: next.toISOString(), actual_completed_at: now.toISOString() };
+    }
+    return { last_reviewed_at: now.toISOString(), status: 'done', actual_completed_at: now.toISOString() };
   }
   return { last_reviewed_at: now.toISOString(), status: 'done', actual_completed_at: now.toISOString() };
 }
