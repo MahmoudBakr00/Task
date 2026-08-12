@@ -1169,6 +1169,13 @@ function renderTaskList() {
   container.innerHTML = list.map(t => rowTemplate(t)).join('');
 }
 
+function canEditTask(task) {
+  if (!task || !currentUser) return true;
+  // اللي التاسك متكلفة عليه بس (مش هو اللي عملها ولا كلّفها) مايقدرش يعدّل أو يمسح
+  if (task.assigned_to && task.assigned_to === currentUser.id && task.created_by !== currentUser.id) return false;
+  return true;
+}
+
 function rowTemplate(t) {
   const status = computeStatus(t);
   const pulse = status.key === 'late' ? 'pulse' : '';
@@ -1178,6 +1185,7 @@ function rowTemplate(t) {
   const assignee = t.assigned_to ? allProfiles.find(p => p.id === t.assigned_to) : null;
   const isMyExecutionTask = t.assigned_to && currentUser && t.assigned_to === currentUser.id;
   const needsEvidenceFromMe = isMyExecutionTask && t.requires_evidence;
+  const showEditDelete = canEditTask(t);
 
   let actionBtn;
   if (!isAnchor) {
@@ -1213,8 +1221,8 @@ function rowTemplate(t) {
     </div>
     <div class="cell-actions">
       ${actionBtn}
-      <button class="icon-btn" data-action="edit" data-id="${t.id}" title="تعديل">✎</button>
-      <button class="icon-btn" data-action="delete" data-id="${t.id}" title="حذف">🗑</button>
+      ${showEditDelete ? `<button class="icon-btn" data-action="edit" data-id="${t.id}" title="تعديل">✎</button>
+      <button class="icon-btn" data-action="delete" data-id="${t.id}" title="حذف">🗑</button>` : ''}
     </div>
   </div>`;
 }
@@ -1324,8 +1332,11 @@ function bindTaskRowActions(containerId) {
     else if (action === 'evidence') openEvidenceModal(id);
     else if (action === 'edit') {
       const t = tasks.find(x => x.id === id);
-      if (t) openModal(t);
-    } else if (action === 'delete') deleteTask(id);
+      if (t && canEditTask(t)) openModal(t);
+    } else if (action === 'delete') {
+      const t = tasks.find(x => x.id === id);
+      if (t && canEditTask(t)) deleteTask(id);
+    }
   });
 }
 
@@ -1759,6 +1770,17 @@ function scrollTimeGridToRelevantHour() {
 
 let dayTasksModalDate = null;
 
+function handleTaskClick(t) {
+  if (!t) return;
+  if (canEditTask(t)) { openModal(t); return; }
+
+  // اللي التاسك متكلفة عليه بس — نوديه لتنفيذها بدل فتح فورم التعديل
+  if (t._isAnchor === false) { toast('ده موعد قادم متوقع، لسه مش وقت التنفيذ', 'error'); return; }
+  if (!canExecuteTask(t)) { toast(earlyExecutionMessage(t), 'error'); return; }
+  if (t.requires_evidence) openEvidenceModal(t.id);
+  else markReviewed(t.id);
+}
+
 function bindCalendarCellEvents() {
   document.querySelectorAll('[data-date]').forEach(el => {
     el.addEventListener('click', (e) => {
@@ -1766,7 +1788,7 @@ function bindCalendarCellEvents() {
       if (chip && chip.dataset.id) {
         e.stopPropagation();
         const t = tasks.find(x => x.id === chip.dataset.id);
-        if (t) openModal(t);
+        handleTaskClick(t);
         return;
       }
       const [y, m, day] = el.dataset.date.split('-').map(Number);
@@ -1812,7 +1834,7 @@ function openDayTasksModal(date, dayTasks) {
     card.addEventListener('click', () => {
       const t = tasks.find(x => x.id === card.dataset.dayTaskId);
       closeDayTasksModal();
-      if (t) openModal(t);
+      handleTaskClick(t);
     });
   });
 
@@ -2224,6 +2246,8 @@ async function submitEvidence(e) {
 }
 
 async function deleteTask(id) {
+  const task = tasks.find(t => t.id === id);
+  if (task && !canEditTask(task)) { toast('مش من صلاحياتك تحذفي المهمة دي', 'error'); return; }
   if (!confirm('متأكد إنك عاوز تحذف المهمة دي؟')) return;
   const { error } = await supabase.from('tasks').delete().eq('id', id);
   if (error) { toast('حصل خطأ أثناء الحذف: ' + error.message, 'error'); return; }
