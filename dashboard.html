@@ -77,6 +77,11 @@ body{background-image:radial-gradient(circle at 15% 0%,rgba(0,120,212,.04),trans
 .modal-overlay{position:fixed;inset:0;background:rgba(10,12,15,.72);display:flex;align-items:flex-start;justify-content:center;padding:40px 16px;z-index:50;overflow-y:auto}
 .modal-overlay[hidden]{display:none}
 .modal{background:var(--bg-panel);border:1px solid var(--border-soft);border-radius:var(--radius-lg);width:100%;max-width:560px;box-shadow:var(--shadow-panel)}
+.modal-wide{max-width:680px}
+.preview-row{display:grid;grid-template-columns:auto 1fr auto auto;gap:10px;align-items:center;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;font-size:13px}
+.preview-row select{width:auto;min-width:110px;padding:5px 8px;font-size:12px}
+.manage-row{display:grid;grid-template-columns:1fr auto auto auto;gap:10px;align-items:center;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px 12px;font-size:13px}
+.manage-row select{width:auto;min-width:110px;padding:6px 8px;font-size:12px}
 .modal-header{display:flex;align-items:center;justify-content:space-between;padding:20px 24px;border-bottom:1px solid var(--border-soft)}
 .modal-header h2{font-size:16.5px;margin:0}
 .modal-body{padding:22px 24px;display:grid;gap:16px}
@@ -200,6 +205,7 @@ textarea{resize:vertical;min-height:64px}
         🔔 <span id="notifyLabel">تفعيل الإشعارات</span>
       </button>
       <button class="btn btn-ghost btn-sm" id="addEmployeeBtn" hidden>👤+ إضافة موظف</button>
+      <button class="btn btn-ghost btn-sm" id="manageEmployeesBtn" hidden>👥 إدارة الموظفين</button>
       <button class="btn btn-primary" id="addTaskBtn">+ مهمة جديدة</button>
       <button class="icon-btn" id="logoutBtn" title="تسجيل الخروج">⏻</button>
     </div>
@@ -304,36 +310,86 @@ textarea{resize:vertical;min-height:64px}
 </div>
 
 <div class="modal-overlay" id="employeeModal" hidden>
-  <div class="modal">
+  <div class="modal modal-wide">
     <div class="modal-header">
-      <h2>إضافة موظف جديد</h2>
+      <h2>إضافة موظفين</h2>
       <button class="icon-btn" id="closeEmployeeModalBtn">✕</button>
     </div>
-    <form id="employeeForm">
+
+    <div class="mode-toggle" style="margin:16px 24px 0;width:calc(100% - 48px);">
+      <button type="button" id="empTabManualBtn" class="active">إضافة يدوية</button>
+      <button type="button" id="empTabExcelBtn">رفع ملف إكسيل</button>
+    </div>
+
+    <div id="empManualPane">
+      <form id="employeeForm">
+        <div class="modal-body">
+          <div class="form-row">
+            <label for="e_full_name">اسم الموظف *</label>
+            <input type="text" id="e_full_name" required>
+          </div>
+          <div class="form-row">
+            <label for="e_employee_code">الكود الوظيفي *</label>
+            <input type="text" id="e_employee_code" required placeholder="هيبقى هو الإيميل وكلمة المرور الأولية">
+          </div>
+          <div class="form-row">
+            <label for="e_role">الدور *</label>
+            <select id="e_role" required></select>
+          </div>
+          <div class="hint">الموظف هيدخل بالكود الوظيفي ده كإيميل وكلمة مرور، وهيتطلب منه يغيّر كلمة المرور أول ما يدخل.</div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" id="cancelEmployeeModalBtn">إلغاء</button>
+          <button type="submit" class="btn btn-primary" id="saveEmployeeBtn">إضافة</button>
+        </div>
+      </form>
+    </div>
+
+    <div id="empExcelPane" hidden>
       <div class="modal-body">
         <div class="form-row">
-          <label for="e_full_name">اسم الموظف *</label>
-          <input type="text" id="e_full_name" required>
+          <label for="excelFileInput">ملف الإكسيل (عمود أول = اسم الموظف، عمود تاني = الكود الوظيفي)</label>
+          <input type="file" id="excelFileInput" accept=".xlsx,.xls,.csv">
+          <div class="hint">لو أول صف عناوين أعمدة مش بيانات، سيبيه من غير تحديد (Checkbox) وقت المعاينة تحت.</div>
         </div>
-        <div class="form-row">
-          <label for="e_employee_code">الكود الوظيفي *</label>
-          <input type="text" id="e_employee_code" required placeholder="هيبقى هو الإيميل وكلمة المرور الأولية">
+
+        <div id="excelPreviewWrap" hidden>
+          <div class="form-row-2" style="align-items:end;">
+            <div class="form-row">
+              <label for="bulkRoleSelect">الدور لكل الصفوف المحددة</label>
+              <select id="bulkRoleSelect"></select>
+            </div>
+            <button type="button" class="btn btn-ghost btn-sm" id="applyBulkRoleBtn">تطبيق على المحدد</button>
+          </div>
+          <div id="excelPreviewTable" class="steps-list" style="margin-top:10px;max-height:280px;overflow-y:auto;"></div>
         </div>
-        <div class="form-row">
-          <label for="e_role">الدور *</label>
-          <select id="e_role" required></select>
-        </div>
-        <div class="hint">الموظف هيدخل بالكود الوظيفي ده كإيميل وكلمة مرور، وهيتطلب منه يغيّر كلمة المرور أول ما يدخل.</div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-ghost" id="cancelEmployeeModalBtn">إلغاء</button>
-        <button type="submit" class="btn btn-primary" id="saveEmployeeBtn">إضافة</button>
+        <button type="button" class="btn btn-ghost" id="cancelExcelBtn">إلغاء</button>
+        <button type="button" class="btn btn-primary" id="importExcelBtn" disabled>استيراد المحددين</button>
       </div>
-    </form>
+    </div>
+
+  </div>
+</div>
+
+<div class="modal-overlay" id="manageEmployeesModal" hidden>
+  <div class="modal modal-wide">
+    <div class="modal-header">
+      <h2>إدارة الموظفين</h2>
+      <button class="icon-btn" id="closeManageEmployeesBtn">✕</button>
+    </div>
+    <div class="modal-body">
+      <div id="manageEmployeesList" class="steps-list"></div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-ghost" id="closeManageEmployeesBtn2">إغلاق</button>
+    </div>
   </div>
 </div>
 
 <div class="modal-overlay" id="taskModal" hidden>
+
   <div class="modal">
     <div class="modal-header">
       <h2 id="modalTitle">مهمة جديدة</h2>
@@ -481,6 +537,7 @@ textarea{resize:vertical;min-height:64px}
 <div class="toast-stack" id="toastStack"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script>
 (function() {
 const SUPABASE_URL = 'https://tzjegripbztrqdfvretb.supabase.co';
@@ -519,18 +576,62 @@ function getAssignableProfiles() {
 function setupRoleBasedUI() {
   const assignable = getAssignableRoles(currentProfile.role);
   document.getElementById('addEmployeeBtn').hidden = assignable.length === 0;
+  document.getElementById('manageEmployeesBtn').hidden = assignable.length === 0;
 
   const roleSelect = document.getElementById('e_role');
   roleSelect.innerHTML = assignable.map(r => `<option value="${r}">${ROLE_LABELS[r]}</option>`).join('');
+
+  const bulkRoleSelect = document.getElementById('bulkRoleSelect');
+  bulkRoleSelect.innerHTML = assignable.map(r => `<option value="${r}">${ROLE_LABELS[r]}</option>`).join('');
 }
 
 function openEmployeeModal() {
   document.getElementById('employeeForm').reset();
+  switchEmployeeTab('manual');
+  resetExcelPane();
   document.getElementById('employeeModal').hidden = false;
 }
 
 function closeEmployeeModal() {
   document.getElementById('employeeModal').hidden = true;
+}
+
+function switchEmployeeTab(tab) {
+  document.getElementById('empTabManualBtn').classList.toggle('active', tab === 'manual');
+  document.getElementById('empTabExcelBtn').classList.toggle('active', tab === 'excel');
+  document.getElementById('empManualPane').hidden = tab !== 'manual';
+  document.getElementById('empExcelPane').hidden = tab !== 'excel';
+}
+
+async function createEmployeeAccount(fullName, code, role) {
+  // عميل ثانوي مؤقت (persistSession: false) عشان إنشاء الحساب الجديد
+  // ميبدلش جلسة تسجيل الدخول بتاعتك انتِ — نفس الحل اللي استخدمناه في سيستم الكواليتي
+  const tempClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false }
+  });
+  const email = `${code}@${EMPLOYEE_EMAIL_DOMAIN}`;
+
+  const { data: signUpData, error: signUpError } = await tempClient.auth.signUp({ email, password: code });
+  if (signUpError || !signUpData.user) {
+    return { ok: false, error: signUpError?.message || 'غير معروف' };
+  }
+
+  const { error: profileError } = await supabase.from('profiles').insert({
+    id: signUpData.user.id,
+    full_name: fullName,
+    role,
+    employee_code: code,
+    must_change_password: true,
+  });
+
+  if (profileError) return { ok: false, error: profileError.message };
+  return { ok: true, email };
+}
+
+async function refreshProfiles() {
+  const { data: profilesData } = await supabase.from('profiles').select('*').order('full_name');
+  allProfiles = profilesData || [];
+  populateAssigneeDropdown();
 }
 
 async function createEmployee(e) {
@@ -549,47 +650,191 @@ async function createEmployee(e) {
     return;
   }
 
-  // عميل ثانوي مؤقت (persistSession: false) عشان إنشاء الحساب الجديد
-  // ميبدلش جلسة تسجيل الدخول بتاعتك انتِ — نفس الحل اللي استخدمناه في سيستم الكواليتي
-  const tempClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    auth: { persistSession: false, autoRefreshToken: false }
-  });
-
-  const email = `${code}@${EMPLOYEE_EMAIL_DOMAIN}`;
-
-  const { data: signUpData, error: signUpError } = await tempClient.auth.signUp({
-    email, password: code,
-  });
-
-  if (signUpError || !signUpData.user) {
-    toast('حصل خطأ أثناء إنشاء الحساب: ' + (signUpError?.message || 'غير معروف'), 'error');
-    saveBtn.disabled = false; saveBtn.textContent = 'إضافة';
-    return;
-  }
-
-  const { error: profileError } = await supabase.from('profiles').insert({
-    id: signUpData.user.id,
-    full_name: fullName,
-    role,
-    employee_code: code,
-    must_change_password: true,
-  });
-
+  const result = await createEmployeeAccount(fullName, code, role);
   saveBtn.disabled = false; saveBtn.textContent = 'إضافة';
 
-  if (profileError) {
-    toast('حصل خطأ أثناء حفظ بيانات الموظف: ' + profileError.message, 'error');
+  if (!result.ok) {
+    toast('حصل خطأ: ' + result.error, 'error');
     return;
   }
 
-  toast(`تمت إضافة ${fullName} ✅ — الإيميل: ${email} / كلمة المرور المبدئية: ${code}`, 'success');
+  toast(`تمت إضافة ${fullName} ✅ — الإيميل: ${result.email} / كلمة المرور المبدئية: ${code}`, 'success');
   closeEmployeeModal();
-
-  const { data: profilesData } = await supabase.from('profiles').select('*').order('full_name');
-  allProfiles = profilesData || [];
-  populateAssigneeDropdown();
+  await refreshProfiles();
 }
 
+// ------------------------------------------------------------
+// رفع ملف إكسيل لإضافة موظفين بالجملة
+// ------------------------------------------------------------
+let excelRows = [];
+
+function resetExcelPane() {
+  excelRows = [];
+  document.getElementById('excelFileInput').value = '';
+  document.getElementById('excelPreviewWrap').hidden = true;
+  document.getElementById('excelPreviewTable').innerHTML = '';
+  document.getElementById('importExcelBtn').disabled = true;
+}
+
+function handleExcelFile(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (evt) => {
+    const data = new Uint8Array(evt.target.result);
+    const wb = XLSX.read(data, { type: 'array' });
+    const sheet = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+
+    excelRows = rows
+      .filter(r => r[0] || r[1])
+      .map((r, i) => ({
+        rowId: `xr_${i}`,
+        name: String(r[0] || '').trim(),
+        code: String(r[1] || '').trim(),
+        role: getAssignableRoles(currentProfile.role)[0] || 'technician',
+        selected: true,
+      }));
+
+    renderExcelPreview();
+    document.getElementById('excelPreviewWrap').hidden = false;
+    document.getElementById('importExcelBtn').disabled = excelRows.length === 0;
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function renderExcelPreview() {
+  const assignable = getAssignableRoles(currentProfile.role);
+  const roleOptions = assignable.map(r => `<option value="${r}">${ROLE_LABELS[r]}</option>`).join('');
+
+  const container = document.getElementById('excelPreviewTable');
+  container.innerHTML = excelRows.map(r => `
+    <div class="preview-row">
+      <input type="checkbox" data-row-check="${r.rowId}" ${r.selected ? 'checked' : ''} style="width:auto;">
+      <span>${escapeHtml(r.name)} <span class="step-type-badge">${escapeHtml(r.code)}</span></span>
+      <select data-row-role="${r.rowId}">${roleOptions}</select>
+      <span></span>
+    </div>
+  `).join('');
+
+  container.querySelectorAll('[data-row-check]').forEach(cb => {
+    cb.addEventListener('change', () => {
+      const row = excelRows.find(r => r.rowId === cb.dataset.rowCheck);
+      if (row) row.selected = cb.checked;
+    });
+  });
+  container.querySelectorAll('[data-row-role]').forEach(sel => {
+    const row = excelRows.find(r => r.rowId === sel.dataset.rowRole);
+    if (row) sel.value = row.role;
+    sel.addEventListener('change', () => {
+      const r = excelRows.find(r => r.rowId === sel.dataset.rowRole);
+      if (r) r.role = sel.value;
+    });
+  });
+}
+
+function applyBulkRole() {
+  const role = document.getElementById('bulkRoleSelect').value;
+  excelRows.forEach(r => { if (r.selected) r.role = role; });
+  renderExcelPreview();
+}
+
+async function importExcelSelected() {
+  const selectedRows = excelRows.filter(r => r.selected && r.name && r.code);
+  if (selectedRows.length === 0) { toast('حددي صف واحد على الأقل', 'error'); return; }
+
+  const importBtn = document.getElementById('importExcelBtn');
+  importBtn.disabled = true;
+
+  let successCount = 0;
+  const failed = [];
+
+  for (const row of selectedRows) {
+    importBtn.textContent = `جاري الاستيراد... (${successCount + failed.length + 1}/${selectedRows.length})`;
+    const result = await createEmployeeAccount(row.name, row.code, row.role);
+    if (result.ok) successCount++;
+    else failed.push(`${row.name}: ${result.error}`);
+    await new Promise(r => setTimeout(r, 400)); // تهدئة بسيطة بين كل حساب والتاني
+  }
+
+  importBtn.disabled = false;
+  importBtn.textContent = 'استيراد المحددين';
+
+  toast(`تم استيراد ${successCount} موظف بنجاح${failed.length ? ` — فشل ${failed.length}` : ''}`, failed.length ? 'error' : 'success');
+  if (failed.length) console.warn('فشل استيراد:', failed);
+
+  await refreshProfiles();
+  closeEmployeeModal();
+}
+
+// ------------------------------------------------------------
+// إدارة الموظفين (تعديل / حذف)
+// ------------------------------------------------------------
+function openManageEmployeesModal() {
+  renderManageEmployeesList();
+  document.getElementById('manageEmployeesModal').hidden = false;
+}
+
+function closeManageEmployeesModal() {
+  document.getElementById('manageEmployeesModal').hidden = true;
+}
+
+function renderManageEmployeesList() {
+  const assignable = getAssignableProfiles();
+  const container = document.getElementById('manageEmployeesList');
+  const roleOptions = getAssignableRoles(currentProfile.role).map(r => `<option value="${r}">${ROLE_LABELS[r]}</option>`).join('');
+
+  if (assignable.length === 0) {
+    container.innerHTML = `<div class="hint">مفيش موظفين مضافين لسه</div>`;
+    return;
+  }
+
+  container.innerHTML = assignable.map(p => `
+    <div class="manage-row">
+      <span>${escapeHtml(p.full_name)} <span class="step-type-badge">#${escapeHtml(p.employee_code || '—')}</span></span>
+      <select data-manage-role="${p.id}">${roleOptions}</select>
+      <button type="button" class="btn btn-ghost btn-sm" data-manage-rename="${p.id}">✎ الاسم</button>
+      <button type="button" class="icon-btn" data-manage-delete="${p.id}" title="حذف">🗑</button>
+    </div>
+  `).join('');
+
+  container.querySelectorAll('[data-manage-role]').forEach(sel => {
+    const p = assignable.find(x => x.id === sel.dataset.manageRole);
+    if (p) sel.value = p.role;
+    sel.addEventListener('change', async () => {
+      const { error } = await supabase.from('profiles').update({ role: sel.value }).eq('id', sel.dataset.manageRole);
+      if (error) { toast('حصل خطأ: ' + error.message, 'error'); return; }
+      toast('تم تحديث الدور ✅', 'success');
+      await refreshProfiles();
+    });
+  });
+
+  container.querySelectorAll('[data-manage-rename]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const p = assignable.find(x => x.id === btn.dataset.manageRename);
+      const newName = prompt('اسم الموظف الجديد:', p?.full_name || '');
+      if (!newName || !newName.trim()) return;
+      const { error } = await supabase.from('profiles').update({ full_name: newName.trim() }).eq('id', btn.dataset.manageRename);
+      if (error) { toast('حصل خطأ: ' + error.message, 'error'); return; }
+      toast('تم تحديث الاسم ✅', 'success');
+      await refreshProfiles();
+      renderManageEmployeesList();
+    });
+  });
+
+  container.querySelectorAll('[data-manage-delete]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const p = assignable.find(x => x.id === btn.dataset.manageDelete);
+      if (!confirm(`متأكدة إنك عاوزة تمسحي ${p?.full_name}؟ هيتقفل وصوله للسيستم.`)) return;
+      const { error } = await supabase.from('profiles').delete().eq('id', btn.dataset.manageDelete);
+      if (error) { toast('حصل خطأ: ' + error.message, 'error'); return; }
+      toast('تم حذف الموظف', 'success');
+      await refreshProfiles();
+      renderManageEmployeesList();
+    });
+  });
+}
 
 
 (async function init() {
@@ -722,7 +967,7 @@ function populateFilterOptions() {
   fillDatalist('dl_lines', tasks.map(t => t.line));
   fillDatalist('dl_stages', tasks.map(t => t.stage));
   fillDatalist('dl_supervisors', tasks.map(t => t.supervisor_name));
-  fillDatalist('dl_employees', tasks.map(t => t.employee_name));
+  fillDatalist('dl_employees', [...tasks.map(t => t.employee_name), ...allProfiles.map(p => p.full_name)]);
 }
 
 function fillDistinct(selectId, values) {
@@ -891,12 +1136,25 @@ function bindUI() {
   document.getElementById('employeeModal').addEventListener('click', (e) => { if (e.target.id === 'employeeModal') closeEmployeeModal(); });
   document.getElementById('employeeForm').addEventListener('submit', createEmployee);
 
+  document.getElementById('empTabManualBtn').addEventListener('click', () => switchEmployeeTab('manual'));
+  document.getElementById('empTabExcelBtn').addEventListener('click', () => switchEmployeeTab('excel'));
+  document.getElementById('excelFileInput').addEventListener('change', handleExcelFile);
+  document.getElementById('applyBulkRoleBtn').addEventListener('click', applyBulkRole);
+  document.getElementById('cancelExcelBtn').addEventListener('click', closeEmployeeModal);
+  document.getElementById('importExcelBtn').addEventListener('click', importExcelSelected);
+
+  document.getElementById('manageEmployeesBtn').addEventListener('click', openManageEmployeesModal);
+  document.getElementById('closeManageEmployeesBtn').addEventListener('click', closeManageEmployeesModal);
+  document.getElementById('closeManageEmployeesBtn2').addEventListener('click', closeManageEmployeesModal);
+  document.getElementById('manageEmployeesModal').addEventListener('click', (e) => { if (e.target.id === 'manageEmployeesModal') closeManageEmployeesModal(); });
+
   document.getElementById('closeEvidenceModalBtn').addEventListener('click', closeEvidenceModal);
   document.getElementById('cancelEvidenceModalBtn').addEventListener('click', closeEvidenceModal);
   document.getElementById('evidenceModal').addEventListener('click', (e) => { if (e.target.id === 'evidenceModal') closeEvidenceModal(); });
   document.getElementById('evidenceForm').addEventListener('submit', submitEvidence);
 
   document.getElementById('f_assigned_to').addEventListener('change', onAssigneeChange);
+  document.getElementById('f_employee_name').addEventListener('input', onEmployeeNameInput);
   document.getElementById('f_requires_evidence').addEventListener('change', onEvidenceCheckChange);
   document.getElementById('addStepBtn').addEventListener('click', () => { document.getElementById('addStepForm').hidden = false; });
   document.getElementById('cancelStepBtn').addEventListener('click', () => { document.getElementById('addStepForm').hidden = true; });
@@ -1266,6 +1524,14 @@ function populateAssigneeDropdown() {
   select.innerHTML = '<option value="">بدون تكليف — متابعة شخصية بس</option>' +
     assignable.map(p => `<option value="${p.id}">${escapeHtml(p.full_name)} (${ROLE_LABELS[p.role]})</option>`).join('');
   select.value = assignable.some(p => p.id === current) ? current : '';
+}
+
+function onEmployeeNameInput() {
+  const typed = document.getElementById('f_employee_name').value.trim();
+  const match = allProfiles.find(p => p.full_name === typed);
+  if (match && match.employee_code) {
+    document.getElementById('f_employee_code').value = match.employee_code;
+  }
 }
 
 function onAssigneeChange() {
