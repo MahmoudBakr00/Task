@@ -193,6 +193,56 @@ textarea{resize:vertical;min-height:64px}
   .calendar-toolbar{flex-direction:column;align-items:stretch}
 }
 
+@media (max-width:640px){
+  .app-shell{padding:14px 12px 70px}
+  .topbar{padding:14px;border-radius:var(--radius-md);gap:10px}
+  .brand-text h1{font-size:15px}
+  .brand-text span{font-size:11px}
+  .topbar-actions{width:100%;justify-content:flex-start;flex-wrap:wrap;gap:8px}
+  .topbar-actions .btn{font-size:12.5px;padding:8px 12px}
+  .topbar-actions .btn-primary{order:-1;flex:1 1 100%}
+
+  .stats-strip{grid-template-columns:repeat(2,1fr);gap:8px}
+  .stat-card{padding:12px 14px}
+  .stat-num{font-size:22px}
+
+  .view-tabs{gap:6px}
+  .view-tab{flex:1;font-size:12px;padding:8px 6px;text-align:center}
+
+  .filters{flex-direction:column;align-items:stretch}
+  .filters select,.filters .search-box{width:100%;min-width:0}
+
+  .board-panel{border-radius:var(--radius-md)}
+
+  .modal-overlay{padding:0}
+  .modal{max-width:100%;min-height:100vh;border-radius:0;display:flex;flex-direction:column}
+  .modal-wide{max-width:100%}
+  .modal-header{padding:16px}
+  .modal-body{padding:16px;gap:12px;flex:1;overflow-y:auto}
+  .modal-footer{padding:14px 16px;flex-wrap:wrap}
+  .modal-footer .btn{flex:1}
+  .form-row-2{grid-template-columns:1fr;gap:12px}
+  .day-picker{gap:5px}
+  .day-chip{padding:6px 9px;font-size:11px}
+
+  .preview-row{grid-template-columns:auto 1fr;grid-template-areas:"check name" "select select";row-gap:6px}
+  .preview-row input[type=checkbox]{grid-area:check}
+  .preview-row span{grid-area:name}
+  .preview-row select{grid-area:select;width:100%;min-width:0}
+  .manage-row{grid-template-columns:1fr;row-gap:8px}
+  .manage-row select{width:100%}
+
+  .autocomplete-dropdown{max-height:180px}
+
+  .calendar-panel{padding:12px}
+  .calendar-nav{flex-wrap:wrap;gap:6px}
+  .calendar-title{font-size:13.5px;min-width:0}
+  .time-days{overflow-x:auto}
+  .time-day-col-wrap{min-width:64px}
+
+  .login-card{padding:26px 20px}
+}
+
 </style>
 </head>
 <body>
