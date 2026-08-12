@@ -36,7 +36,8 @@ body{background-image:radial-gradient(circle at 15% 0%,rgba(0,120,212,.04),trans
 .stats-date-range{display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap;font-size:12.5px;color:var(--text-muted)}
 .stats-date-range input[type=date]{background:var(--bg-panel);border:1px solid var(--border);color:var(--text-primary);padding:7px 10px;border-radius:var(--radius-sm);font-size:13px;width:auto}
 .stat-card.done::before{background:var(--accent)}
-.stat-card{background:var(--bg-panel);border:1px solid var(--border-soft);border-radius:var(--radius-md);padding:16px 18px;position:relative;overflow:hidden}
+.stat-card{background:var(--bg-panel);border:1px solid var(--border-soft);border-radius:var(--radius-md);padding:16px 18px;position:relative;overflow:hidden;cursor:pointer;transition:background .12s ease}
+.stat-card:hover{background:var(--bg-panel-2)}
 .stat-card::before{content:'';position:absolute;inset-inline-start:0;top:0;bottom:0;width:4px}
 .stat-card.late::before{background:var(--status-late)}
 .stat-card.warn::before{background:var(--status-warn)}
@@ -294,6 +295,7 @@ textarea{resize:vertical;min-height:64px}
       </button>
       <button class="btn btn-ghost btn-sm" id="addEmployeeBtn" hidden>👤+ إضافة موظف</button>
       <button class="btn btn-ghost btn-sm" id="manageEmployeesBtn" hidden>👥 إدارة الموظفين</button>
+      <button class="btn btn-ghost btn-sm" id="addPersonalTaskBtn">📝 مهمة شخصية</button>
       <button class="btn btn-primary" id="addTaskBtn">+ مهمة جديدة</button>
       <button class="icon-btn" id="logoutBtn" title="تسجيل الخروج">⏻</button>
     </div>
@@ -308,12 +310,12 @@ textarea{resize:vertical;min-height:64px}
   </div>
 
   <div class="stats-strip">
-    <div class="stat-card late"><div class="stat-num" id="statLate">0</div><div class="stat-label">متأخرة</div></div>
-    <div class="stat-card warn"><div class="stat-num" id="statWarn">0</div><div class="stat-label">قربت تستحق</div></div>
-    <div class="stat-card ok"><div class="stat-num" id="statOk">0</div><div class="stat-label">في الموعد</div></div>
-    <div class="stat-card done"><div class="stat-num" id="statDone">0</div><div class="stat-label">منفّذة</div></div>
-    <div class="stat-card total"><div class="stat-num" id="statTotal">0</div><div class="stat-label">إجمالي في الفترة</div></div>
-    <div class="stat-card total"><div class="stat-num" id="statAllTime">0</div><div class="stat-label">إجمالي كل الأوقات</div></div>
+    <div class="stat-card late" data-stat="late"><div class="stat-num" id="statLate">0</div><div class="stat-label">متأخرة</div></div>
+    <div class="stat-card warn" data-stat="warn"><div class="stat-num" id="statWarn">0</div><div class="stat-label">قربت تستحق</div></div>
+    <div class="stat-card ok" data-stat="ok"><div class="stat-num" id="statOk">0</div><div class="stat-label">في الموعد</div></div>
+    <div class="stat-card done" data-stat="done"><div class="stat-num" id="statDone">0</div><div class="stat-label">منفّذة</div></div>
+    <div class="stat-card total" data-stat="total"><div class="stat-num" id="statTotal">0</div><div class="stat-label">إجمالي في الفترة</div></div>
+    <div class="stat-card total" data-stat="personal"><div class="stat-num" id="statPersonal">0</div><div class="stat-label">المهام الشخصية</div></div>
   </div>
 
   <div class="view-tabs">
@@ -431,6 +433,64 @@ textarea{resize:vertical;min-height:64px}
         <button type="submit" class="btn btn-primary" id="submitEvidenceBtn">تأكيد التنفيذ</button>
       </div>
     </form>
+  </div>
+</div>
+
+<div class="modal-overlay" id="personalTaskModal" hidden>
+  <div class="modal">
+    <div class="modal-header">
+      <h2>مهمة شخصية</h2>
+      <button class="icon-btn" id="closePersonalTaskModalBtn">✕</button>
+    </div>
+    <form id="personalTaskForm">
+      <div class="modal-body">
+        <div class="form-row-2">
+          <div class="form-row">
+            <label for="p_employee_name">اسم الموظف *</label>
+            <input type="text" id="p_employee_name" required>
+          </div>
+          <div class="form-row">
+            <label for="p_employee_code">كود الموظف</label>
+            <input type="text" id="p_employee_code">
+          </div>
+        </div>
+        <div class="form-row-2">
+          <div class="form-row">
+            <label for="p_line">الخط</label>
+            <input type="text" id="p_line">
+          </div>
+          <div class="form-row">
+            <label for="p_stage">المرحلة</label>
+            <input type="text" id="p_stage">
+          </div>
+        </div>
+        <div class="form-row">
+          <label for="p_task">التاسك المطلوب *</label>
+          <textarea id="p_task" required></textarea>
+        </div>
+        <div class="form-row">
+          <label for="p_supervisor">اسم المشرف</label>
+          <input type="text" id="p_supervisor">
+        </div>
+        <div class="hint">هتتسجّل كمتابعة شخصية بتاريخ النهاردة، من غير تكليف أو معاد محدد.</div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" id="cancelPersonalTaskModalBtn">إلغاء</button>
+        <button type="submit" class="btn btn-primary" id="savePersonalTaskBtn">حفظ</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal-overlay" id="statDrilldownModal" hidden>
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="statDrilldownTitle">القائمة</h2>
+      <button class="icon-btn" id="closeStatDrilldownBtn">✕</button>
+    </div>
+    <div class="modal-body" style="max-height:70vh;overflow-y:auto;">
+      <div id="statDrilldownList" class="day-tasks-stack"></div>
+    </div>
   </div>
 </div>
 
@@ -1084,10 +1144,12 @@ async function loadTasks() {
   checkNewAssignments();
   populateFilterOptions();
   refreshView();
-  loadAllTimeTotal();
 }
 
 function refreshView() { renderStats(); renderTaskList(); renderCalendar(); }
+
+let lastFilteredTasks = [];
+let lastCompletedRecords = [];
 
 function renderStats() {
   const fromVal = document.getElementById('statsFromDate').value;
@@ -1103,39 +1165,34 @@ function renderStats() {
   };
 
   const filteredTasks = tasks.filter(t => inRange(t.review_at));
+  lastFilteredTasks = filteredTasks;
 
-  let late = 0, warn = 0, ok = 0;
+  let late = 0, warn = 0, ok = 0, personal = 0;
   filteredTasks.forEach(t => {
     const s = computeStatus(t);
     if (s.key === 'late') late++;
     else if (s.key === 'warn') warn++;
     else if (s.key === 'ok') ok++;
+    if (!t.assigned_to) personal++;
   });
   document.getElementById('statLate').textContent = late;
   document.getElementById('statWarn').textContent = warn;
   document.getElementById('statOk').textContent = ok;
   document.getElementById('statTotal').textContent = filteredTasks.length;
+  document.getElementById('statPersonal').textContent = personal;
 
-  loadCompletedCountInRange(fromVal, toVal);
+  loadCompletedInRange(fromVal, toVal);
 }
 
-async function loadCompletedCountInRange(fromVal, toVal) {
-  let query = supabase.from('task_completions').select('id', { count: 'exact', head: true });
+async function loadCompletedInRange(fromVal, toVal) {
+  let query = supabase.from('task_completions').select('*').order('actual_completed_at', { ascending: false });
   if (currentProfile.role === 'technician') query = query.eq('completed_by', currentUser.id);
   if (fromVal) query = query.gte('actual_completed_at', fromVal + 'T00:00:00');
   if (toVal) query = query.lte('actual_completed_at', toVal + 'T23:59:59');
 
-  const { count, error } = await query;
-  document.getElementById('statDone').textContent = error ? '—' : (count || 0);
-}
-
-async function loadAllTimeTotal() {
-  let query = supabase.from('tasks').select('id', { count: 'exact', head: true });
-  if (currentProfile.role === 'technician') query = query.eq('assigned_to', currentUser.id);
-  else query = query.or(`created_by.eq.${currentUser.id},assigned_to.eq.${currentUser.id}`);
-
-  const { count, error } = await query;
-  document.getElementById('statAllTime').textContent = error ? '—' : (count || 0);
+  const { data, error } = await query;
+  lastCompletedRecords = error ? [] : (data || []);
+  document.getElementById('statDone').textContent = error ? '—' : lastCompletedRecords.length;
 }
 
 function populateFilterOptions() {
@@ -1317,6 +1374,18 @@ function bindUI() {
     document.getElementById('statsToDate').value = '';
     renderStats();
   });
+
+  document.querySelectorAll('.stat-card[data-stat]').forEach(card => {
+    card.addEventListener('click', () => openStatDrilldown(card.dataset.stat));
+  });
+  document.getElementById('closeStatDrilldownBtn').addEventListener('click', () => { document.getElementById('statDrilldownModal').hidden = true; });
+  document.getElementById('statDrilldownModal').addEventListener('click', (e) => { if (e.target.id === 'statDrilldownModal') e.currentTarget.hidden = true; });
+
+  document.getElementById('addPersonalTaskBtn').addEventListener('click', openPersonalTaskModal);
+  document.getElementById('closePersonalTaskModalBtn').addEventListener('click', closePersonalTaskModal);
+  document.getElementById('cancelPersonalTaskModalBtn').addEventListener('click', closePersonalTaskModal);
+  document.getElementById('personalTaskModal').addEventListener('click', (e) => { if (e.target.id === 'personalTaskModal') closePersonalTaskModal(); });
+  document.getElementById('personalTaskForm').addEventListener('submit', savePersonalTask);
 
   document.getElementById('viewTabList').addEventListener('click', () => switchView('list'));
   document.getElementById('viewTabCalendar').addEventListener('click', () => switchView('calendar'));
@@ -1908,6 +1977,108 @@ function openDayTasksModal(date, dayTasks) {
 
 function closeDayTasksModal() {
   document.getElementById('dayTasksModal').hidden = true;
+}
+
+// ------------------------------------------------------------
+// دوسة على أي مربع إحصائية بتفتح ليستة بالحاجات اللي فيه
+// ------------------------------------------------------------
+const STAT_TITLES = {
+  late: 'المهام المتأخرة', warn: 'المهام اللي قربت تستحق', ok: 'المهام في الموعد',
+  total: 'إجمالي المهام في الفترة', personal: 'المهام الشخصية', done: 'المهام المنفّذة في الفترة',
+};
+
+function openStatDrilldown(type) {
+  document.getElementById('statDrilldownTitle').textContent = STAT_TITLES[type] || 'القائمة';
+  const container = document.getElementById('statDrilldownList');
+
+  if (type === 'done') {
+    if (lastCompletedRecords.length === 0) {
+      container.innerHTML = `<div class="hint">مفيش حاجة هنا</div>`;
+    } else {
+      container.innerHTML = lastCompletedRecords.map(r => {
+        const status = historyStatus(r.planned_at, r.actual_completed_at);
+        return `<div class="day-task-card ${status.key === 'late' ? 'late' : 'ok'}">
+          <div class="day-task-card-top">
+            <span class="day-task-card-name">${escapeHtml(r.employee_name || '—')}</span>
+            <span class="day-task-card-time">${formatExact(r.actual_completed_at)}</span>
+          </div>
+          <div class="day-task-card-desc">${escapeHtml(r.task_description || '')}</div>
+          <div class="day-task-card-meta">
+            <span>بواسطة: ${escapeHtml(r.completed_by_name || '—')}</span>
+            <span>${status.label}</span>
+          </div>
+        </div>`;
+      }).join('');
+    }
+    document.getElementById('statDrilldownModal').hidden = false;
+    return;
+  }
+
+  let list;
+  if (type === 'personal') list = lastFilteredTasks.filter(t => !t.assigned_to);
+  else if (type === 'total') list = lastFilteredTasks;
+  else list = lastFilteredTasks.filter(t => computeStatus(t).key === type);
+
+  if (list.length === 0) {
+    container.innerHTML = `<div class="hint">مفيش حاجة هنا</div>`;
+  } else {
+    container.innerHTML = list.map(t => dayTaskCardTemplate(t)).join('');
+    container.querySelectorAll('[data-day-task-id]').forEach(card => {
+      card.addEventListener('click', () => {
+        const t = tasks.find(x => x.id === card.dataset.dayTaskId);
+        document.getElementById('statDrilldownModal').hidden = true;
+        handleTaskClick(t);
+      });
+    });
+  }
+
+  document.getElementById('statDrilldownModal').hidden = false;
+}
+
+// ------------------------------------------------------------
+// مهمة شخصية (فورم مبسّط بدون جدولة أو تكليف)
+// ------------------------------------------------------------
+function openPersonalTaskModal() {
+  document.getElementById('personalTaskForm').reset();
+  document.getElementById('personalTaskModal').hidden = false;
+}
+
+function closePersonalTaskModal() {
+  document.getElementById('personalTaskModal').hidden = true;
+}
+
+async function savePersonalTask(e) {
+  e.preventDefault();
+  const saveBtn = document.getElementById('savePersonalTaskBtn');
+  saveBtn.disabled = true;
+  saveBtn.textContent = 'جاري الحفظ...';
+
+  const payload = {
+    employee_name: document.getElementById('p_employee_name').value.trim(),
+    employee_code: document.getElementById('p_employee_code').value.trim() || null,
+    line: document.getElementById('p_line').value.trim() || null,
+    stage: document.getElementById('p_stage').value.trim() || null,
+    task_description: document.getElementById('p_task').value.trim(),
+    supervisor_name: document.getElementById('p_supervisor').value.trim() || null,
+    review_mode: 'once',
+    review_at: new Date().toISOString(),
+    status: 'active',
+    assigned_to: null,
+    assigned_by: null,
+    created_by: currentUser.id,
+    requires_evidence: false,
+    evidence_steps: null,
+  };
+
+  const { error } = await supabase.from('tasks').insert(payload);
+  saveBtn.disabled = false;
+  saveBtn.textContent = 'حفظ';
+
+  if (error) { toast('حصل خطأ: ' + error.message, 'error'); return; }
+
+  toast('تمت إضافة المهمة الشخصية ✅', 'success');
+  closePersonalTaskModal();
+  await loadTasks();
 }
 
 // ------------------------------------------------------------
