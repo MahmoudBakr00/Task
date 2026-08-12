@@ -178,6 +178,7 @@ textarea{resize:vertical;min-height:64px}
 .month-task-bar:hover{filter:brightness(.97)}
 .month-task-bar.late{border-inline-start-color:var(--status-late);background:var(--status-late-bg)}
 .month-task-bar.warn{border-inline-start-color:var(--status-warn);background:var(--status-warn-bg)}
+.month-task-bar.done{border-inline-start-color:var(--status-done);background:var(--status-done-bg);opacity:.6}
 .month-task-time{font-family:var(--font-data);color:var(--text-muted);margin-inline-end:2px}
 .month-cell-more{font-size:9.5px;color:var(--text-faint);flex-shrink:0}
 
@@ -199,6 +200,7 @@ textarea{resize:vertical;min-height:64px}
 .time-task-block{position:absolute;inset-inline:3px;height:38px;border-radius:5px;padding:2px 6px;font-size:10px;line-height:1.25;overflow:hidden;cursor:pointer;border-inline-start:3px solid var(--status-ok);background:var(--status-ok-bg);color:var(--text-primary);z-index:1;box-sizing:border-box}
 .time-task-block.late{border-inline-start-color:var(--status-late);background:var(--status-late-bg)}
 .time-task-block.warn{border-inline-start-color:var(--status-warn);background:var(--status-warn-bg)}
+.time-task-block.done{border-inline-start-color:var(--status-done);background:var(--status-done-bg);opacity:.6}
 .time-task-block:hover{filter:brightness(.96);z-index:3}
 .time-task-time{font-family:var(--font-data);font-weight:700}
 .time-now-line{position:absolute;inset-inline:0;height:2px;background:var(--status-late);z-index:4;pointer-events:none}
@@ -556,14 +558,14 @@ textarea{resize:vertical;min-height:64px}
           <div class="form-row">
             <label for="f_employee_name">اسم الموظف *</label>
             <div class="autocomplete-wrap">
-              <input type="text" id="f_employee_name" autocomplete="off" required placeholder="اكتبي أو دوسي على الخانة عشان تشوفي القايمة">
+              <input type="text" id="f_employee_name" autocomplete="off" required placeholder="اكتب أو دوس على الخانة عشان تشوف القايمة">
               <div id="employeeSuggestList" class="autocomplete-dropdown" hidden></div>
             </div>
           </div>
           <div class="form-row">
             <label for="f_employee_code">كود الموظف</label>
             <div class="autocomplete-wrap">
-              <input type="text" id="f_employee_code" autocomplete="off" placeholder="اكتبي أو دوسي على الخانة عشان تشوفي القايمة">
+              <input type="text" id="f_employee_code" autocomplete="off" placeholder="اكتب أو دوس على الخانة عشان تشوف القايمة">
               <div id="codeSuggestList" class="autocomplete-dropdown" hidden></div>
             </div>
           </div>
@@ -594,11 +596,11 @@ textarea{resize:vertical;min-height:64px}
         <div class="form-row">
           <label for="f_assigned_to_search">تكليف لموظف (اختياري)</label>
           <div class="autocomplete-wrap">
-            <input type="text" id="f_assigned_to_search" autocomplete="off" placeholder="اكتبي اسم الموظف أو دوسي على الخانة لعرض القايمة">
+            <input type="text" id="f_assigned_to_search" autocomplete="off" placeholder="اكتب اسم الموظف أو دوس على الخانة لعرض القايمة">
             <div id="assigneeSuggestList" class="autocomplete-dropdown" hidden></div>
           </div>
           <input type="hidden" id="f_assigned_to">
-          <div class="hint">لو حددتي موظف، هو اللي هيدخل السيستم وينفذ المهمة ويرفع الدليل لو مطلوب</div>
+          <div class="hint">لو حددت موظف، هو اللي هيدخل السيستم وينفذ المهمة ويرفع الدليل لو مطلوب</div>
         </div>
 
         <div class="form-row" id="evidenceCheckRow" hidden>
@@ -659,13 +661,13 @@ textarea{resize:vertical;min-height:64px}
             </select>
           </div>
           <div class="form-row" style="margin-top:8px;">
-            <label for="f_first_review_at">أول موعد مراجعة *</label>
-            <input type="datetime-local" id="f_first_review_at">
+            <label for="f_recurrence_start_date">تاريخ بدء التكرار *</label>
+            <input type="date" id="f_recurrence_start_date">
           </div>
           <div class="hint">بعد كل مراجعة، هيتحسب الموعد الجاي تلقائياً حسب التكرار</div>
 
           <div class="form-row" style="margin-top:12px;">
-            <label>أيام التكرار (سيبيها كلها من غير تحديد لو عاوزة كل يوم)</label>
+            <label>أيام التكرار (سيبها كلها من غير تحديد لو عايز كل يوم)</label>
             <div class="day-picker">
               <button type="button" class="day-chip active" data-day="0">أحد</button>
               <button type="button" class="day-chip active" data-day="1">اتنين</button>
@@ -679,15 +681,15 @@ textarea{resize:vertical;min-height:64px}
 
           <div class="form-row-2" style="margin-top:10px;">
             <div class="form-row">
-              <label>من الساعة</label>
-              <input type="text" value="بتاخدها من (أول موعد مراجعة) فوق" disabled style="color:var(--text-faint);">
+              <label for="f_recurrence_start_time">من الساعة *</label>
+              <input type="time" id="f_recurrence_start_time">
             </div>
             <div class="form-row">
               <label for="f_recurrence_end_time">لحد الساعة (اختياري)</label>
               <input type="time" id="f_recurrence_end_time">
             </div>
           </div>
-          <div class="hint">لو حددتي "لحد الساعة" أصغر من وقت "أول موعد مراجعة"، هيتفهم تلقائي إنها وردية ليلية بتعدي نص الليل (زي من 10م لحد 6ص)</div>
+          <div class="hint">لو حددت "لحد الساعة" أصغر من "من الساعة"، هيتفهم تلقائي إنها وردية ليلية بتعدي نص الليل (زي من 10م لحد 6ص)</div>
         </div>
         <div class="form-row">
           <label for="f_notes">ملاحظات</label>
@@ -910,7 +912,7 @@ function applyBulkRole() {
 
 async function importExcelSelected() {
   const selectedRows = excelRows.filter(r => r.selected && r.name && r.code);
-  if (selectedRows.length === 0) { toast('حددي صف واحد على الأقل', 'error'); return; }
+  if (selectedRows.length === 0) { toast('حدد صف واحد على الأقل', 'error'); return; }
 
   const importBtn = document.getElementById('importExcelBtn');
   importBtn.disabled = true;
@@ -994,7 +996,7 @@ function renderManageEmployeesList() {
   container.querySelectorAll('[data-manage-delete]').forEach(btn => {
     btn.addEventListener('click', async () => {
       const p = assignable.find(x => x.id === btn.dataset.manageDelete);
-      if (!confirm(`متأكدة إنك عاوزة تمسحي ${p?.full_name}؟ هيتقفل وصوله للسيستم.`)) return;
+      if (!confirm(`متأكد إنك عايز تمسح ${p?.full_name}؟ هيتقفل وصوله للسيستم.`)) return;
       const { error } = await supabase.from('profiles').delete().eq('id', btn.dataset.manageDelete);
       if (error) { toast('حصل خطأ: ' + error.message, 'error'); return; }
       toast('تم حذف الموظف', 'success');
@@ -1045,7 +1047,7 @@ function renderManageEmployeesList() {
   setInterval(refreshView, REFRESH_INTERVAL_MS);
   setInterval(checkDueNotifications, CHECK_NOTIFY_INTERVAL_MS);
 
-  // افتحي على طول على مهام النهاردة
+  // افتح على طول على مهام النهاردة
   calendarDate = new Date();
   selectedCalendarDate = new Date();
   document.getElementById('calModeMonthBtn').classList.remove('active');
@@ -1096,7 +1098,7 @@ function formatExact(iso) {
 }
 
 async function loadTasks() {
-  let query = supabase.from('tasks').select('*').neq('status', 'done').order('review_at', { ascending: true });
+  let query = supabase.from('tasks').select('*').order('review_at', { ascending: true });
 
   if (currentProfile.role === 'technician') {
     query = query.eq('assigned_to', currentUser.id);
@@ -1130,7 +1132,7 @@ function renderStats() {
     return true;
   };
 
-  const filteredTasks = tasks.filter(t => inRange(t.review_at));
+  const filteredTasks = tasks.filter(t => t.status !== 'done' && inRange(t.review_at));
   lastFilteredTasks = filteredTasks;
 
   let late = 0, warn = 0, ok = 0, personal = 0;
@@ -1168,7 +1170,7 @@ function populateFilterOptions() {
   fillDatalist('dl_lines', tasks.map(t => t.line));
   fillDatalist('dl_stages', tasks.map(t => t.stage));
   fillDatalist('dl_supervisors', tasks.map(t => t.supervisor_name));
-  // employeeSuggestList بيتغذى مباشرة عند الكتابة (شوفي onEmployeeNameInput)
+  // employeeSuggestList بيتغذى مباشرة عند الكتابة (شوف onEmployeeNameInput)
 }
 
 function fillDistinct(selectId, values) {
@@ -1206,6 +1208,7 @@ function getFilteredSortedTasks() {
   const sortBy = document.getElementById('sortBy').value;
 
   let list = tasks.filter(t => {
+    if (!fStatus && t.status === 'done') return false; // متخفية من القايمة الافتراضية، بس تفضل في التقويم
     if (fLine && t.line !== fLine) return false;
     if (fStage && t.stage !== fStage) return false;
     if (fSup && t.supervisor_name !== fSup) return false;
@@ -1266,7 +1269,9 @@ function rowTemplate(t) {
   const showEditDelete = canEditTask(t);
 
   let actionBtn;
-  if (!isAnchor) {
+  if (status.key === 'done') {
+    actionBtn = `<span class="hint" style="align-self:center;">${status.label} ✅</span>`;
+  } else if (!isAnchor) {
     actionBtn = `<span class="hint" style="align-self:center;">موعد قادم</span>`;
   } else if (needsEvidenceFromMe) {
     actionBtn = `<button class="btn btn-sm btn-primary" data-action="evidence" data-id="${t.id}">تنفيذ + رفع دليل</button>`;
@@ -1294,7 +1299,7 @@ function rowTemplate(t) {
     </div>
     <div class="cell-mode">${modeLabel}</div>
     <div class="cell-time">
-      <span class="badge ${status.key}">${formatRelative(status.diff)}</span>
+      <span class="badge ${status.key}">${status.key === 'done' ? status.label : formatRelative(status.diff)}</span>
       <div class="exact">${formatExact(t.review_at)}</div>
     </div>
     <div class="cell-actions">
@@ -1450,6 +1455,7 @@ function bindTaskRowActions(containerId) {
 const EARLY_EXECUTION_GRACE_MS = 10 * 60 * 1000; // 10 دقايق قبل الموعد المحدد
 
 function canExecuteTask(task) {
+  if (task.status === 'done') return false;
   const due = new Date(task.review_at);
   const now = new Date();
 
@@ -1466,7 +1472,7 @@ function earlyExecutionMessage(task) {
   const remainingMs = due - EARLY_EXECUTION_GRACE_MS - Date.now();
   const mins = Math.round(remainingMs / 60000);
   const text = mins >= 60 ? `${Math.round(remainingMs / 3600000)} س` : `${mins} د`;
-  return `لسه بدري — تقدري تنفذي المهمة دي بعد ${text} (10 دقايق قبل الموعد المحدد: ${formatExact(task.review_at)})`;
+  return `لسه بدري — تقدر تنفذ المهمة دي بعد ${text} (10 دقايق قبل الموعد المحدد: ${formatExact(task.review_at)})`;
 }
 
 
@@ -1607,7 +1613,7 @@ function renderEvidenceCell(r) {
     const label = escapeHtml(labelFor(stepId));
     if (type === 'image') {
       return `<div class="evidence-entry"><span class="ev-label">${label}:</span><br>
-        <img class="evidence-thumb" src="${value}" data-evidence-image="${value}" title="دوسي للتكبير">
+        <img class="evidence-thumb" src="${value}" data-evidence-image="${value}" title="دوس للتكبير">
       </div>`;
     }
     return `<div class="evidence-entry"><span class="ev-label">${label}:</span> <span class="ev-value">${escapeHtml(String(value))}</span></div>`;
@@ -1881,6 +1887,7 @@ function handleTaskClick(t) {
 
   // اللي التاسك متكلفة عليه بس — نوديه لتنفيذها بدل فتح فورم التعديل
   if (t._isAnchor === false) { toast('ده موعد قادم متوقع، لسه مش وقت التنفيذ', 'error'); return; }
+  if (t.status === 'done') { toast('المهمة دي منفّذة بالفعل ✅', 'success'); return; }
   if (!canExecuteTask(t)) { toast(earlyExecutionMessage(t), 'error'); return; }
   if (t.requires_evidence) openEvidenceModal(t.id);
   else markReviewed(t.id);
@@ -2019,7 +2026,7 @@ let currentSteps = [];
 let stepIdCounter = 0;
 
 function populateAssigneeDropdown() {
-  // مبقاش محتاجين نبني <select>؛ القايمة بترندر لحظياً وقت البحث/التركيز (شوفي renderAssigneeSuggestions)
+  // مبقاش محتاجين نبني <select>؛ القايمة بترندر لحظياً وقت البحث/التركيز (شوف renderAssigneeSuggestions)
 }
 
 function renderAssigneeSuggestions(filterText) {
@@ -2161,7 +2168,7 @@ function renderStepsList() {
 function addEvidenceStep() {
   const label = document.getElementById('newStepLabel').value.trim();
   const type = document.getElementById('newStepType').value;
-  if (!label) { toast('اكتبي وصف الخطوة', 'error'); return; }
+  if (!label) { toast('اكتب وصف الخطوة', 'error'); return; }
   stepIdCounter++;
   currentSteps.push({ id: `step_${Date.now()}_${stepIdCounter}`, label, type });
   document.getElementById('newStepLabel').value = '';
@@ -2193,7 +2200,7 @@ function openModal(task, prefillDate, duplicateSource, personalMode) {
   document.getElementById('assignmentSection').hidden = !!personalMode;
 
   populateAssigneeDropdown();
-  document.getElementById('f_assigned_to').value = task?.assigned_to || ''; // النسخ بيسيب التكليف فاضي عشان تختاري شخص/وردية تانية
+  document.getElementById('f_assigned_to').value = task?.assigned_to || ''; // النسخ بيسيب التكليف فاضي عشان تختار شخص/وردية تانية
   const assignedProfileForModal = task?.assigned_to ? allProfiles.find(p => p.id === task.assigned_to) : null;
   document.getElementById('f_assigned_to_search').value = assignedProfileForModal ? assignedProfileForModal.full_name : '';
   document.getElementById('f_requires_evidence').checked = !!src?.requires_evidence;
@@ -2225,7 +2232,13 @@ function openModal(task, prefillDate, duplicateSource, personalMode) {
   } else {
     document.getElementById('f_recurrence_value').value = src?.recurrence_value || 2;
     document.getElementById('f_recurrence_unit').value = src?.recurrence_unit || 'hours';
-    document.getElementById('f_first_review_at').value = src ? toLocalInput(src.review_at) : '';
+    if (src) {
+      document.getElementById('f_recurrence_start_date').value = toLocalDateStr(src.review_at);
+      document.getElementById('f_recurrence_start_time').value = toLocalTimeStr(src.review_at);
+    } else {
+      document.getElementById('f_recurrence_start_date').value = toLocalDateStr(new Date());
+      document.getElementById('f_recurrence_start_time').value = '';
+    }
     document.getElementById('f_recurrence_end_time').value = src?.recurrence_end_time || '';
 
     const activeDays = src?.recurrence_days;
@@ -2259,6 +2272,18 @@ function toLocalInput(iso) {
   const d = new Date(iso);
   const pad = n => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function toLocalDateStr(iso) {
+  const d = new Date(iso);
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+}
+
+function toLocalTimeStr(iso) {
+  const d = new Date(iso);
+  const pad = n => String(n).padStart(2, '0');
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 async function saveTask(e) {
@@ -2296,9 +2321,10 @@ async function saveTask(e) {
     payload.recurrence_days = null;
     payload.recurrence_end_time = null;
   } else {
-    const val = document.getElementById('f_first_review_at').value;
-    if (!val) { toast('حدد أول موعد مراجعة', 'error'); resetSaveBtn(); return; }
-    payload.review_at = new Date(val).toISOString();
+    const dateVal = document.getElementById('f_recurrence_start_date').value;
+    const timeVal = document.getElementById('f_recurrence_start_time').value;
+    if (!dateVal || !timeVal) { toast('حدد تاريخ بدء التكرار والساعة اللي يبدأ منها', 'error'); resetSaveBtn(); return; }
+    payload.review_at = new Date(`${dateVal}T${timeVal}`).toISOString();
     payload.recurrence_value = parseInt(document.getElementById('f_recurrence_value').value, 10);
     payload.recurrence_unit = document.getElementById('f_recurrence_unit').value;
 
@@ -2475,7 +2501,7 @@ async function submitEvidence(e) {
 
     if (type === 'image') {
       const file = field.files[0];
-      if (!file) { toast('ارفعي كل الصور المطلوبة', 'error'); submitBtn.disabled = false; submitBtn.textContent = 'تأكيد التنفيذ'; return; }
+      if (!file) { toast('ارفع كل الصور المطلوبة', 'error'); submitBtn.disabled = false; submitBtn.textContent = 'تأكيد التنفيذ'; return; }
       submitBtn.textContent = 'جاري ضغط الصورة...';
       const compressed = await compressImageFile(file);
       submitBtn.textContent = 'جاري الرفع...';
@@ -2554,7 +2580,7 @@ async function toggleNotifications() {
     if (perm !== 'granted') return;
   }
 
-  // دايماً ابعتي إشعار تجريبي فوري عشان تحسي إن الزرار شغال فعلاً
+  // دايماً ابعت إشعار تجريبي فوري عشان تحس إن الزرار شغال فعلاً
   toast('الإشعارات مفعّلة 🔔', 'success');
   new Notification('متابعة تنفيذ المهام', {
     body: 'ده تنبيه تجريبي — لما أي تاسك يستحق المراجعة هيوصلك تنبيه زي ده تلقائياً',
