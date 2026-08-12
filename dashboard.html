@@ -10,6 +10,7 @@
 <style>
 :root{--bg-floor:#f3f2f1;--bg-panel:#ffffff;--bg-panel-2:#f8f7f6;--bg-elevated:#f3f2f1;--border:#e1dfdd;--border-soft:#edebe9;--text-primary:#201f1e;--text-muted:#605e5c;--text-faint:#a19f9d;--accent:#0078d4;--accent-dim:#106ebe;--status-ok:#107c10;--status-ok-bg:rgba(16,124,16,.08);--status-warn:#ca5010;--status-warn-bg:rgba(202,80,16,.09);--status-late:#d13438;--status-late-bg:rgba(209,52,56,.09);--status-done:#a19f9d;--status-done-bg:rgba(161,159,157,.14);--radius-sm:6px;--radius-md:10px;--radius-lg:16px;--font-display:'Tajawal','Segoe UI',sans-serif;--font-data:'JetBrains Mono',Consolas,monospace;--shadow-panel:0 1.6px 3.6px rgba(0,0,0,.08),0 0.3px 0.9px rgba(0,0,0,.06)}
 *{box-sizing:border-box}
+[hidden]{display:none !important}
 html,body{margin:0;padding:0;background:var(--bg-floor);color:var(--text-primary);font-family:var(--font-display);direction:rtl;min-height:100vh}
 body{background-image:radial-gradient(circle at 15% 0%,rgba(0,120,212,.04),transparent 40%),radial-gradient(circle at 85% 100%,rgba(16,124,16,.03),transparent 40%);background-attachment:fixed}
 ::-webkit-scrollbar{width:10px;height:10px}
@@ -436,52 +437,6 @@ textarea{resize:vertical;min-height:64px}
   </div>
 </div>
 
-<div class="modal-overlay" id="personalTaskModal" hidden>
-  <div class="modal">
-    <div class="modal-header">
-      <h2>مهمة شخصية</h2>
-      <button class="icon-btn" id="closePersonalTaskModalBtn">✕</button>
-    </div>
-    <form id="personalTaskForm">
-      <div class="modal-body">
-        <div class="form-row-2">
-          <div class="form-row">
-            <label for="p_employee_name">اسم الموظف *</label>
-            <input type="text" id="p_employee_name" required>
-          </div>
-          <div class="form-row">
-            <label for="p_employee_code">كود الموظف</label>
-            <input type="text" id="p_employee_code">
-          </div>
-        </div>
-        <div class="form-row-2">
-          <div class="form-row">
-            <label for="p_line">الخط</label>
-            <input type="text" id="p_line">
-          </div>
-          <div class="form-row">
-            <label for="p_stage">المرحلة</label>
-            <input type="text" id="p_stage">
-          </div>
-        </div>
-        <div class="form-row">
-          <label for="p_task">التاسك المطلوب *</label>
-          <textarea id="p_task" required></textarea>
-        </div>
-        <div class="form-row">
-          <label for="p_supervisor">اسم المشرف</label>
-          <input type="text" id="p_supervisor">
-        </div>
-        <div class="hint">هتتسجّل كمتابعة شخصية بتاريخ النهاردة، من غير تكليف أو معاد محدد.</div>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-ghost" id="cancelPersonalTaskModalBtn">إلغاء</button>
-        <button type="submit" class="btn btn-primary" id="savePersonalTaskBtn">حفظ</button>
-      </div>
-    </form>
-  </div>
-</div>
-
 <div class="modal-overlay" id="statDrilldownModal" hidden>
   <div class="modal">
     <div class="modal-header">
@@ -632,6 +587,7 @@ textarea{resize:vertical;min-height:64px}
           <datalist id="dl_supervisors"></datalist>
         </div>
 
+        <div id="assignmentSection">
         <div class="form-row">
           <label for="f_assigned_to">تكليف لموظف (اختياري)</label>
           <select id="f_assigned_to">
@@ -672,6 +628,7 @@ textarea{resize:vertical;min-height:64px}
             <button type="button" class="btn btn-primary btn-sm" id="confirmStepBtn">إضافة</button>
             <button type="button" class="btn btn-ghost btn-sm" id="cancelStepBtn">إلغاء</button>
           </div>
+        </div>
         </div>
 
         <div class="form-row">
@@ -1381,11 +1338,7 @@ function bindUI() {
   document.getElementById('closeStatDrilldownBtn').addEventListener('click', () => { document.getElementById('statDrilldownModal').hidden = true; });
   document.getElementById('statDrilldownModal').addEventListener('click', (e) => { if (e.target.id === 'statDrilldownModal') e.currentTarget.hidden = true; });
 
-  document.getElementById('addPersonalTaskBtn').addEventListener('click', openPersonalTaskModal);
-  document.getElementById('closePersonalTaskModalBtn').addEventListener('click', closePersonalTaskModal);
-  document.getElementById('cancelPersonalTaskModalBtn').addEventListener('click', closePersonalTaskModal);
-  document.getElementById('personalTaskModal').addEventListener('click', (e) => { if (e.target.id === 'personalTaskModal') closePersonalTaskModal(); });
-  document.getElementById('personalTaskForm').addEventListener('submit', savePersonalTask);
+  document.getElementById('addPersonalTaskBtn').addEventListener('click', () => openModal(null, null, null, true));
 
   document.getElementById('viewTabList').addEventListener('click', () => switchView('list'));
   document.getElementById('viewTabCalendar').addEventListener('click', () => switchView('calendar'));
@@ -1997,6 +1950,7 @@ function openStatDrilldown(type) {
     } else {
       container.innerHTML = lastCompletedRecords.map(r => {
         const status = historyStatus(r.planned_at, r.actual_completed_at);
+        const evidenceHtml = r.requires_evidence ? `<div style="margin-top:8px;">${renderEvidenceCell(r)}</div>` : '';
         return `<div class="day-task-card ${status.key === 'late' ? 'late' : 'ok'}">
           <div class="day-task-card-top">
             <span class="day-task-card-name">${escapeHtml(r.employee_name || '—')}</span>
@@ -2007,8 +1961,13 @@ function openStatDrilldown(type) {
             <span>بواسطة: ${escapeHtml(r.completed_by_name || '—')}</span>
             <span>${status.label}</span>
           </div>
+          ${evidenceHtml}
         </div>`;
       }).join('');
+
+      container.querySelectorAll('[data-evidence-image]').forEach(img => {
+        img.addEventListener('click', () => window.open(img.dataset.evidenceImage, '_blank'));
+      });
     }
     document.getElementById('statDrilldownModal').hidden = false;
     return;
@@ -2033,52 +1992,6 @@ function openStatDrilldown(type) {
   }
 
   document.getElementById('statDrilldownModal').hidden = false;
-}
-
-// ------------------------------------------------------------
-// مهمة شخصية (فورم مبسّط بدون جدولة أو تكليف)
-// ------------------------------------------------------------
-function openPersonalTaskModal() {
-  document.getElementById('personalTaskForm').reset();
-  document.getElementById('personalTaskModal').hidden = false;
-}
-
-function closePersonalTaskModal() {
-  document.getElementById('personalTaskModal').hidden = true;
-}
-
-async function savePersonalTask(e) {
-  e.preventDefault();
-  const saveBtn = document.getElementById('savePersonalTaskBtn');
-  saveBtn.disabled = true;
-  saveBtn.textContent = 'جاري الحفظ...';
-
-  const payload = {
-    employee_name: document.getElementById('p_employee_name').value.trim(),
-    employee_code: document.getElementById('p_employee_code').value.trim() || null,
-    line: document.getElementById('p_line').value.trim() || null,
-    stage: document.getElementById('p_stage').value.trim() || null,
-    task_description: document.getElementById('p_task').value.trim(),
-    supervisor_name: document.getElementById('p_supervisor').value.trim() || null,
-    review_mode: 'once',
-    review_at: new Date().toISOString(),
-    status: 'active',
-    assigned_to: null,
-    assigned_by: null,
-    created_by: currentUser.id,
-    requires_evidence: false,
-    evidence_steps: null,
-  };
-
-  const { error } = await supabase.from('tasks').insert(payload);
-  saveBtn.disabled = false;
-  saveBtn.textContent = 'حفظ';
-
-  if (error) { toast('حصل خطأ: ' + error.message, 'error'); return; }
-
-  toast('تمت إضافة المهمة الشخصية ✅', 'success');
-  closePersonalTaskModal();
-  await loadTasks();
 }
 
 // ------------------------------------------------------------
@@ -2195,10 +2108,10 @@ function setMode(mode) {
   document.getElementById('recurringRow').hidden = mode !== 'recurring';
 }
 
-function openModal(task, prefillDate, duplicateSource) {
+function openModal(task, prefillDate, duplicateSource, personalMode) {
   const src = task || duplicateSource || null;
   editingTaskId = task ? task.id : null;
-  document.getElementById('modalTitle').textContent = task ? 'تعديل المهمة' : (duplicateSource ? 'نسخة من مهمة' : 'مهمة جديدة');
+  document.getElementById('modalTitle').textContent = task ? 'تعديل المهمة' : (personalMode ? 'مهمة شخصية' : (duplicateSource ? 'نسخة من مهمة' : 'مهمة جديدة'));
   document.getElementById('f_employee_name').value = src?.employee_name || '';
   document.getElementById('f_employee_code').value = src?.employee_code || '';
   document.getElementById('f_line').value = src?.line || '';
@@ -2206,6 +2119,8 @@ function openModal(task, prefillDate, duplicateSource) {
   document.getElementById('f_task').value = src?.task_description || '';
   document.getElementById('f_supervisor').value = src?.supervisor_name || '';
   document.getElementById('f_notes').value = src?.notes || '';
+
+  document.getElementById('assignmentSection').hidden = !!personalMode;
 
   populateAssigneeDropdown();
   document.getElementById('f_assigned_to').value = task?.assigned_to || ''; // النسخ بيسيب التكليف فاضي عشان تختاري شخص/وردية تانية
