@@ -562,7 +562,10 @@ textarea{resize:vertical;min-height:64px}
           </div>
           <div class="form-row">
             <label for="f_employee_code">كود الموظف</label>
-            <input type="text" id="f_employee_code">
+            <div class="autocomplete-wrap">
+              <input type="text" id="f_employee_code" autocomplete="off" placeholder="اكتبي أو دوسي على الخانة عشان تشوفي القايمة">
+              <div id="codeSuggestList" class="autocomplete-dropdown" hidden></div>
+            </div>
           </div>
         </div>
         <div class="form-row-2">
@@ -589,10 +592,12 @@ textarea{resize:vertical;min-height:64px}
 
         <div id="assignmentSection">
         <div class="form-row">
-          <label for="f_assigned_to">تكليف لموظف (اختياري)</label>
-          <select id="f_assigned_to">
-            <option value="">بدون تكليف — متابعة شخصية بس</option>
-          </select>
+          <label for="f_assigned_to_search">تكليف لموظف (اختياري)</label>
+          <div class="autocomplete-wrap">
+            <input type="text" id="f_assigned_to_search" autocomplete="off" placeholder="اكتبي اسم الموظف أو دوسي على الخانة لعرض القايمة">
+            <div id="assigneeSuggestList" class="autocomplete-dropdown" hidden></div>
+          </div>
+          <input type="hidden" id="f_assigned_to">
           <div class="hint">لو حددتي موظف، هو اللي هيدخل السيستم وينفذ المهمة ويرفع الدليل لو مطلوب</div>
         </div>
 
@@ -674,11 +679,15 @@ textarea{resize:vertical;min-height:64px}
 
           <div class="form-row-2" style="margin-top:10px;">
             <div class="form-row">
-              <label for="f_recurrence_end_time">يتوقف الساعة (اختياري)</label>
+              <label>من الساعة</label>
+              <input type="text" value="بتاخدها من (أول موعد مراجعة) فوق" disabled style="color:var(--text-faint);">
+            </div>
+            <div class="form-row">
+              <label for="f_recurrence_end_time">لحد الساعة (اختياري)</label>
               <input type="time" id="f_recurrence_end_time">
             </div>
           </div>
-          <div class="hint">لو حددتي وقت التوقف، التكرار هيشتغل بس من وقت أول موعد لحد وقت التوقف في كل يوم مفعّل، وبعدين يوقف لحد اليوم المفعّل الجاي</div>
+          <div class="hint">لو حددتي "لحد الساعة" أصغر من وقت "أول موعد مراجعة"، هيتفهم تلقائي إنها وردية ليلية بتعدي نص الليل (زي من 10م لحد 6ص)</div>
         </div>
         <div class="form-row">
           <label for="f_notes">ملاحظات</label>
@@ -1381,7 +1390,18 @@ function bindUI() {
   document.getElementById('evidenceModal').addEventListener('click', (e) => { if (e.target.id === 'evidenceModal') closeEvidenceModal(); });
   document.getElementById('evidenceForm').addEventListener('submit', submitEvidence);
 
-  document.getElementById('f_assigned_to').addEventListener('change', onAssigneeChange);
+  document.getElementById('f_assigned_to_search').addEventListener('input', () => renderAssigneeSuggestions(document.getElementById('f_assigned_to_search').value));
+  document.getElementById('f_assigned_to_search').addEventListener('focus', () => renderAssigneeSuggestions(document.getElementById('f_assigned_to_search').value));
+  document.getElementById('f_assigned_to_search').addEventListener('blur', () => {
+    setTimeout(() => { document.getElementById('assigneeSuggestList').hidden = true; }, 120);
+  });
+
+  document.getElementById('f_employee_code').addEventListener('input', () => renderCodeSuggestions(document.getElementById('f_employee_code').value));
+  document.getElementById('f_employee_code').addEventListener('focus', () => renderCodeSuggestions(document.getElementById('f_employee_code').value));
+  document.getElementById('f_employee_code').addEventListener('blur', () => {
+    setTimeout(() => { document.getElementById('codeSuggestList').hidden = true; }, 120);
+  });
+
   document.getElementById('f_employee_name').addEventListener('input', onEmployeeNameInput);
   document.getElementById('f_employee_name').addEventListener('focus', onEmployeeNameFocus);
   document.getElementById('f_employee_name').addEventListener('blur', () => {
@@ -1430,8 +1450,15 @@ function bindTaskRowActions(containerId) {
 const EARLY_EXECUTION_GRACE_MS = 10 * 60 * 1000; // 10 دقايق قبل الموعد المحدد
 
 function canExecuteTask(task) {
-  const due = new Date(task.review_at).getTime();
-  return Date.now() >= due - EARLY_EXECUTION_GRACE_MS;
+  const due = new Date(task.review_at);
+  const now = new Date();
+
+  // لازم يوم الاستحقاق نفسه يكون النهاردة أو فات، مش بكرة حتى لو الساعة قريبة
+  const dueDay = new Date(due); dueDay.setHours(0, 0, 0, 0);
+  const today = new Date(now); today.setHours(0, 0, 0, 0);
+  if (dueDay > today) return false;
+
+  return now.getTime() >= due.getTime() - EARLY_EXECUTION_GRACE_MS;
 }
 
 function earlyExecutionMessage(task) {
@@ -1627,17 +1654,23 @@ function getOccurrences(t, rangeStart, rangeEnd) {
   const activeDays = (t.recurrence_days && t.recurrence_days.length) ? new Set(t.recurrence_days) : null; // null = كل الأيام
   const startHour = anchor.getHours(), startMin = anchor.getMinutes();
   let endHour = 23, endMin = 59;
+  let hasEndTime = false;
   if (t.recurrence_end_time) {
     const parts = t.recurrence_end_time.split(':').map(Number);
     endHour = parts[0]; endMin = parts[1] || 0;
+    hasEndTime = true;
   }
+  const startMinsOfDay = startHour * 60 + startMin;
   const endMinsOfDay = endHour * 60 + endMin;
+  const overnight = hasEndTime && endMinsOfDay <= startMinsOfDay; // وردية ليلية بتعدي نص الليل
 
   const occurrences = [];
   const anchorDay = new Date(anchor); anchorDay.setHours(0, 0, 0, 0);
 
   let dayCursor = new Date(rangeStart); dayCursor.setHours(0, 0, 0, 0);
   if (dayCursor < anchorDay) dayCursor = new Date(anchorDay);
+  // لو الوردية ليلية، لازم نبدأ يوم قبل شوية عشان نمسك ذيل وردية اليوم اللي فات لو داخل المدى
+  if (overnight) dayCursor = new Date(dayCursor.getTime() - 24 * 60 * 60 * 1000);
 
   const rangeEndDay = new Date(rangeEnd); rangeEndDay.setHours(0, 0, 0, 0);
 
@@ -1648,10 +1681,19 @@ function getOccurrences(t, rangeStart, rangeEnd) {
     if (!activeDays || activeDays.has(dow)) {
       let cursor = new Date(dayCursor);
       cursor.setHours(startHour, startMin, 0, 0);
+
+      let winEnd;
+      if (overnight) {
+        winEnd = new Date(dayCursor);
+        winEnd.setDate(winEnd.getDate() + 1);
+        winEnd.setHours(endHour, endMin, 59, 999);
+      } else {
+        winEnd = new Date(dayCursor);
+        winEnd.setHours(endHour, endMin, 59, 999);
+      }
+
       let innerGuard = 0;
-      while (innerGuard < 1000) {
-        const mins = cursor.getHours() * 60 + cursor.getMinutes();
-        if (mins > endMinsOfDay) break;
+      while (cursor <= winEnd && innerGuard < 1000) {
         if (cursor >= anchor && cursor >= rangeStart && cursor <= rangeEnd) {
           occurrences.push({ date: new Date(cursor), isAnchor: cursor.getTime() === anchor.getTime() });
           if (occurrences.length >= MAX_OCCURRENCES) return occurrences;
@@ -1671,36 +1713,12 @@ function computeNextDueAfter(t, afterDate) {
   const iv = intervalMs(t);
   if (!iv) return null;
 
-  const anchor = new Date(t.review_at);
-  const startHour = anchor.getHours(), startMin = anchor.getMinutes();
-  const activeDays = (t.recurrence_days && t.recurrence_days.length) ? new Set(t.recurrence_days) : null;
-  let endHour = 23, endMin = 59;
-  if (t.recurrence_end_time) {
-    const parts = t.recurrence_end_time.split(':').map(Number);
-    endHour = parts[0]; endMin = parts[1] || 0;
-  }
-  const endMinsOfDay = endHour * 60 + endMin;
+  const rangeStart = new Date(afterDate.getTime() + 1000); // ثانية بعد اللحظة دي عشان مانرجعش لنفس اللحظة
+  const rangeEnd = new Date(afterDate.getTime() + 60 * 24 * 60 * 60 * 1000); // سقف أمان: شهرين قدام
+  const occurrences = getOccurrences(t, rangeStart, rangeEnd);
 
-  function isValid(d) {
-    if (activeDays && !activeDays.has(d.getDay())) return false;
-    return (d.getHours() * 60 + d.getMinutes()) <= endMinsOfDay;
-  }
-
-  let candidate = new Date(afterDate.getTime() + iv);
-  if (isValid(candidate)) return candidate;
-
-  // روحي لليوم الجاي بنفس وقت البداية، وكرري لحد ما تلاقي يوم مفعّل
-  let dayCursor = new Date(candidate);
-  dayCursor.setHours(startHour, startMin, 0, 0);
-  dayCursor = new Date(dayCursor.getTime() + 24 * 60 * 60 * 1000);
-
-  let guard = 0;
-  while (guard < 30) {
-    if (!activeDays || activeDays.has(dayCursor.getDay())) return dayCursor;
-    dayCursor = new Date(dayCursor.getTime() + 24 * 60 * 60 * 1000);
-    guard++;
-  }
-  return candidate;
+  if (occurrences.length) return occurrences[0].date;
+  return new Date(afterDate.getTime() + iv); // fallback نادر جداً (كل أيام التكرار متعطلة)
 }
 
 // بيرجّع نسخ "مهام" جاهزة للعرض ليوم معين (بما فيها تكرارات المهام المتكررة)
@@ -2001,12 +2019,37 @@ let currentSteps = [];
 let stepIdCounter = 0;
 
 function populateAssigneeDropdown() {
-  const select = document.getElementById('f_assigned_to');
-  const current = select.value;
+  // مبقاش محتاجين نبني <select>؛ القايمة بترندر لحظياً وقت البحث/التركيز (شوفي renderAssigneeSuggestions)
+}
+
+function renderAssigneeSuggestions(filterText) {
+  const list = document.getElementById('assigneeSuggestList');
   const assignable = getAssignableProfiles();
-  select.innerHTML = '<option value="">بدون تكليف — متابعة شخصية بس</option>' +
-    assignable.map(p => `<option value="${p.id}">${escapeHtml(p.full_name)} (${ROLE_LABELS[p.role]})</option>`).join('');
-  select.value = assignable.some(p => p.id === current) ? current : '';
+  const q = (filterText || '').trim().toLowerCase();
+  const filtered = q ? assignable.filter(p => p.full_name.toLowerCase().includes(q)) : assignable;
+
+  let html = `<div class="autocomplete-item" data-assignee-id="" data-assignee-name="">بدون تكليف — متابعة شخصية بس</div>`;
+  if (filtered.length === 0 && q) {
+    html += `<div class="autocomplete-empty">مفيش موظف مطابق</div>`;
+  } else {
+    html += filtered.map(p => `
+      <div class="autocomplete-item" data-assignee-id="${p.id}" data-assignee-name="${escapeHtml(p.full_name)}">
+        ${escapeHtml(p.full_name)} <span class="code-hint">${ROLE_LABELS[p.role]}${p.employee_code ? ' — #' + escapeHtml(p.employee_code) : ''}</span>
+      </div>`).join('');
+  }
+  list.innerHTML = html;
+
+  list.querySelectorAll('[data-assignee-id]').forEach(item => {
+    item.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      document.getElementById('f_assigned_to').value = item.dataset.assigneeId;
+      document.getElementById('f_assigned_to_search').value = item.dataset.assigneeName;
+      list.hidden = true;
+      onAssigneeChange();
+    });
+  });
+
+  list.hidden = false;
 }
 
 function getKnownEmployeeOptions() {
@@ -2014,6 +2057,33 @@ function getKnownEmployeeOptions() {
   tasks.forEach(t => { if (t.employee_name && !map.has(t.employee_name)) map.set(t.employee_name, t.employee_code || ''); });
   allProfiles.forEach(p => map.set(p.full_name, p.employee_code || '')); // بيانات الموظفين المسجلين لها أولوية
   return [...map.entries()].map(([name, code]) => ({ name, code })).sort((a, b) => a.name.localeCompare('ar'));
+}
+
+function renderCodeSuggestions(filterText) {
+  const list = document.getElementById('codeSuggestList');
+  const options = getKnownEmployeeOptions().filter(o => o.code);
+  const q = (filterText || '').trim().toLowerCase();
+  const filtered = q ? options.filter(o => o.code.toLowerCase().includes(q)) : options;
+
+  if (filtered.length === 0) {
+    list.innerHTML = `<div class="autocomplete-empty">${q ? 'مفيش كود مطابق — هيتحفظ كموظف جديد' : 'لسه مفيش أكواد مسجّلة'}</div>`;
+  } else {
+    list.innerHTML = filtered.slice(0, 30).map(o => `
+      <div class="autocomplete-item" data-code="${escapeHtml(o.code)}" data-code-name="${escapeHtml(o.name)}">
+        #${escapeHtml(o.code)} <span class="code-hint">${escapeHtml(o.name)}</span>
+      </div>`).join('');
+  }
+
+  list.querySelectorAll('[data-code]').forEach(item => {
+    item.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      document.getElementById('f_employee_code').value = item.dataset.code;
+      if (item.dataset.codeName) document.getElementById('f_employee_name').value = item.dataset.codeName;
+      list.hidden = true;
+    });
+  });
+
+  list.hidden = false;
 }
 
 function renderEmployeeSuggestions(filterText) {
@@ -2124,6 +2194,8 @@ function openModal(task, prefillDate, duplicateSource, personalMode) {
 
   populateAssigneeDropdown();
   document.getElementById('f_assigned_to').value = task?.assigned_to || ''; // النسخ بيسيب التكليف فاضي عشان تختاري شخص/وردية تانية
+  const assignedProfileForModal = task?.assigned_to ? allProfiles.find(p => p.id === task.assigned_to) : null;
+  document.getElementById('f_assigned_to_search').value = assignedProfileForModal ? assignedProfileForModal.full_name : '';
   document.getElementById('f_requires_evidence').checked = !!src?.requires_evidence;
   currentSteps = src?.evidence_steps ? JSON.parse(JSON.stringify(src.evidence_steps)) : [];
   renderStepsList();
