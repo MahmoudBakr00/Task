@@ -658,21 +658,43 @@ textarea{resize:vertical;min-height:64px}
           <div class="hint">ضيف موعد واحد أو أكتر — لو أكتر من موعد، هينتقل تلقائي للي بعده بعد كل مراجعة، وبعد آخر واحد تتقفل المهمة</div>
         </div>
         <div class="form-row" id="recurringRow" hidden>
-          <label>كل</label>
-          <div class="recurrence-row">
-            <input type="number" id="f_recurrence_value" min="1" value="2">
-            <select id="f_recurrence_unit">
-              <option value="minutes">دقيقة</option>
-              <option value="hours" selected>ساعة</option>
-              <option value="days">يوم</option>
-              <option value="weeks">أسبوع</option>
-            </select>
+          <label>طريقة التكرار</label>
+          <div class="mode-toggle">
+            <button type="button" id="recurModeIntervalBtn" class="active">فاصل زمني</button>
+            <button type="button" id="recurModeTimesBtn">أوقات محددة يومياً</button>
           </div>
-          <div class="form-row" style="margin-top:8px;">
+
+          <div class="form-row" id="recurIntervalSection" style="margin-top:12px;">
+            <label>كل</label>
+            <div class="recurrence-row">
+              <input type="number" id="f_recurrence_value" min="1" value="2">
+              <select id="f_recurrence_unit">
+                <option value="minutes">دقيقة</option>
+                <option value="hours" selected>ساعة</option>
+                <option value="days">يوم</option>
+                <option value="weeks">أسبوع</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row" id="recurTimesSection" style="margin-top:12px;" hidden>
+            <label>أوقات التنفيذ خلال اليوم</label>
+            <div id="recurTimesList" class="steps-list"></div>
+            <div class="form-row-2" style="margin-top:8px;align-items:end;">
+              <div class="form-row">
+                <label for="newRecurTimeInput">أضف وقت</label>
+                <input type="time" id="newRecurTimeInput">
+              </div>
+              <button type="button" class="btn btn-primary btn-sm" id="addRecurTimeBtn">+ إضافة وقت</button>
+            </div>
+            <div class="hint">ضيف كل الأوقات اللي عايز المهمة تتكرر فيها كل يوم، زي 11:00 و 1:30 و 5:25، وكمان أوقات بعد نص الليل زي 1:30 أو 3:00 صباحاً</div>
+          </div>
+
+          <div class="form-row" style="margin-top:12px;">
             <label for="f_recurrence_start_date">تاريخ بدء التكرار *</label>
             <input type="date" id="f_recurrence_start_date">
           </div>
-          <div class="hint">بعد كل مراجعة، هيتحسب الموعد الجاي تلقائياً حسب التكرار</div>
+          <div class="hint" id="recurIntervalHint">بعد كل مراجعة، هيتحسب الموعد الجاي تلقائياً حسب التكرار</div>
 
           <div class="form-row" style="margin-top:12px;">
             <label>أيام التكرار (سيبها كلها من غير تحديد لو عايز كل يوم)</label>
@@ -687,7 +709,7 @@ textarea{resize:vertical;min-height:64px}
             </div>
           </div>
 
-          <div class="form-row-2" style="margin-top:10px;">
+          <div class="form-row-2" id="recurWindowSection" style="margin-top:10px;">
             <div class="form-row">
               <label for="f_recurrence_start_time">من الساعة *</label>
               <input type="time" id="f_recurrence_start_time">
@@ -697,7 +719,7 @@ textarea{resize:vertical;min-height:64px}
               <input type="time" id="f_recurrence_end_time">
             </div>
           </div>
-          <div class="hint">لو حددت "لحد الساعة" أصغر من "من الساعة"، هيتفهم تلقائي إنها وردية ليلية بتعدي نص الليل (زي من 10م لحد 6ص)</div>
+          <div class="hint" id="recurWindowHint">لو حددت "لحد الساعة" أصغر من "من الساعة"، هيتفهم تلقائي إنها وردية ليلية بتعدي نص الليل (زي من 10م لحد 6ص)</div>
         </div>
 
         <div class="form-row">
@@ -1075,6 +1097,13 @@ function intervalMs(task) {
 function warnWindowMs(task) {
   const iv = intervalMs(task);
   if (iv) return Math.min(Math.max(iv * 0.25, 5*60*1000), 3*60*60*1000);
+  if (task.review_mode === 'recurring' && task.recurrence_mode === 'times' && Array.isArray(task.recurrence_times) && task.recurrence_times.length > 1) {
+    // نستخدم 25% من أصغر فجوة بين وقتين متتاليين (بما فيها الفجوة بين آخر وقت النهاردة وأول وقت بكرة)
+    const mins = task.recurrence_times.map(tm => { const [h, m] = tm.split(':').map(Number); return h * 60 + m; }).sort((a, b) => a - b);
+    let minGap = (24 * 60) - mins[mins.length - 1] + mins[0];
+    for (let i = 1; i < mins.length; i++) minGap = Math.min(minGap, mins[i] - mins[i - 1]);
+    if (minGap > 0) return Math.min(Math.max(minGap * 60 * 1000 * 0.25, 5*60*1000), 3*60*60*1000);
+  }
   return 60*60*1000;
 }
 
@@ -1269,7 +1298,10 @@ function canEditTask(task) {
 function rowTemplate(t) {
   const status = computeStatus(t);
   const pulse = status.key === 'late' ? 'pulse' : '';
-  const modeLabel = t.review_mode === 'recurring' ? `كل ${t.recurrence_value} ${unitLabel(t.recurrence_unit)}`
+  const modeLabel = t.review_mode === 'recurring'
+    ? ((t.recurrence_mode === 'times' && Array.isArray(t.recurrence_times) && t.recurrence_times.length)
+        ? `أوقات محددة (${t.recurrence_times.length}/يوم)`
+        : `كل ${t.recurrence_value} ${unitLabel(t.recurrence_unit)}`)
     : t.review_mode === 'custom' ? `مواعيد محددة (${(t.custom_dates || []).length})`
     : 'مرة واحدة';
   const isAnchor = t._isAnchor !== false; // true للمهام العادية وللموعد الفعلي القادم من المتكررة
@@ -1344,6 +1376,9 @@ function bindUI() {
   document.getElementById('taskModal').addEventListener('click', (e) => { if (e.target.id === 'taskModal') closeModal(); });
   document.getElementById('modeOnceBtn').addEventListener('click', () => setMode('once'));
   document.getElementById('modeRecurringBtn').addEventListener('click', () => setMode('recurring'));
+  document.getElementById('recurModeIntervalBtn').addEventListener('click', () => setRecurMode('interval'));
+  document.getElementById('recurModeTimesBtn').addEventListener('click', () => setRecurMode('times'));
+  document.getElementById('addRecurTimeBtn').addEventListener('click', addRecurTime);
   document.getElementById('taskForm').addEventListener('submit', saveTask);
   document.getElementById('logoutBtn').addEventListener('click', logout);
   document.getElementById('notifyBtn').addEventListener('click', toggleNotifications);
@@ -1672,6 +1707,10 @@ function getOccurrences(t, rangeStart, rangeEnd) {
       .map(d => ({ date: d, isAnchor: d.getTime() === anchor.getTime() }));
   }
 
+  if (t.review_mode === 'recurring' && t.recurrence_mode === 'times' && Array.isArray(t.recurrence_times) && t.recurrence_times.length) {
+    return getTimesOccurrences(t, anchor, rangeStart, rangeEnd);
+  }
+
   if (t.review_mode !== 'recurring' || !iv) {
     return (anchor >= rangeStart && anchor <= rangeEnd) ? [{ date: anchor, isAnchor: true }] : [];
   }
@@ -1733,17 +1772,49 @@ function getOccurrences(t, rangeStart, rangeEnd) {
   return occurrences;
 }
 
+// بيولّد كل مواعيد وضع "أوقات محددة يومياً": كل يوم من أيام التكرار المختارة، في كل وقت من قايمة الأوقات
+function getTimesOccurrences(t, anchor, rangeStart, rangeEnd) {
+  const activeDays = (t.recurrence_days && t.recurrence_days.length) ? new Set(t.recurrence_days) : null; // null = كل الأيام
+  const times = t.recurrence_times.slice().sort(); // "HH:MM" بترتيب صح أبجدياً لأنها زوج أرقام دايماً
+
+  const anchorDay = new Date(anchor); anchorDay.setHours(0, 0, 0, 0);
+  let dayCursor = new Date(rangeStart); dayCursor.setHours(0, 0, 0, 0);
+  if (dayCursor < anchorDay) dayCursor = new Date(anchorDay);
+  const rangeEndDay = new Date(rangeEnd); rangeEndDay.setHours(0, 0, 0, 0);
+
+  const occurrences = [];
+  let dayGuard = 0;
+  while (dayCursor <= rangeEndDay && dayGuard < 3660) { // سقف أمان ~10 سنين من الأيام
+    dayGuard++;
+    if (!activeDays || activeDays.has(dayCursor.getDay())) {
+      for (const tm of times) {
+        const [h, m] = tm.split(':').map(Number);
+        const cand = new Date(dayCursor);
+        cand.setHours(h, m, 0, 0);
+        if (cand >= anchor && cand >= rangeStart && cand <= rangeEnd) {
+          occurrences.push({ date: cand, isAnchor: cand.getTime() === anchor.getTime() });
+          if (occurrences.length >= MAX_OCCURRENCES) return occurrences;
+        }
+      }
+    }
+    dayCursor = new Date(dayCursor.getTime() + 24 * 60 * 60 * 1000);
+  }
+  return occurrences;
+}
+
 // بتحسب أقرب موعد استحقاق جاي بعد وقت معيّن، مع مراعاة أيام التكرار ووقت التوقف اليومي
 function computeNextDueAfter(t, afterDate) {
+  const isTimesMode = t.review_mode === 'recurring' && t.recurrence_mode === 'times' && Array.isArray(t.recurrence_times) && t.recurrence_times.length;
   const iv = intervalMs(t);
-  if (!iv) return null;
+  if (!iv && !isTimesMode) return null;
 
   const rangeStart = new Date(afterDate.getTime() + 1000); // ثانية بعد اللحظة دي عشان مانرجعش لنفس اللحظة
   const rangeEnd = new Date(afterDate.getTime() + 60 * 24 * 60 * 60 * 1000); // سقف أمان: شهرين قدام
   const occurrences = getOccurrences(t, rangeStart, rangeEnd);
 
   if (occurrences.length) return occurrences[0].date;
-  return new Date(afterDate.getTime() + iv); // fallback نادر جداً (كل أيام التكرار متعطلة)
+  if (iv) return new Date(afterDate.getTime() + iv); // fallback نادر جداً (كل أيام التكرار متعطلة)
+  return new Date(afterDate.getTime() + 24 * 60 * 60 * 1000); // fallback لوضع الأوقات المحددة (كل الأيام متعطلة)
 }
 
 // بيرجّع نسخ "مهام" جاهزة للعرض ليوم معين (بما فيها تكرارات المهام المتكررة)
@@ -2236,6 +2307,68 @@ function setMode(mode) {
   document.getElementById('recurringRow').hidden = mode !== 'recurring';
 }
 
+let currentRecurMode = 'interval'; // 'interval' = كل X وحدة زمن | 'times' = أوقات محددة يومياً
+function setRecurMode(mode) {
+  currentRecurMode = mode;
+  document.getElementById('recurModeIntervalBtn').classList.toggle('active', mode === 'interval');
+  document.getElementById('recurModeTimesBtn').classList.toggle('active', mode === 'times');
+  document.getElementById('recurIntervalSection').hidden = mode !== 'interval';
+  document.getElementById('recurTimesSection').hidden = mode !== 'times';
+  document.getElementById('recurWindowSection').hidden = mode !== 'interval';
+  document.getElementById('recurIntervalHint').hidden = mode !== 'interval';
+  document.getElementById('recurWindowHint').hidden = mode !== 'interval';
+}
+
+let currentRecurTimes = []; // مصفوفة أوقات "HH:MM" لوضع "أوقات محددة يومياً"
+
+function renderRecurTimesList() {
+  const container = document.getElementById('recurTimesList');
+  const sorted = currentRecurTimes.slice().sort();
+  if (sorted.length === 0) {
+    container.innerHTML = `<div class="hint">لسه مفيش أوقات مضافة</div>`;
+    return;
+  }
+  container.innerHTML = sorted.map(tm => `
+    <div class="step-item">
+      <span>${tm}</span>
+      <button type="button" class="remove-step-btn" data-remove-time="${tm}">✕</button>
+    </div>
+  `).join('');
+  container.querySelectorAll('[data-remove-time]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      currentRecurTimes = currentRecurTimes.filter(tm => tm !== btn.dataset.removeTime);
+      renderRecurTimesList();
+    });
+  });
+}
+
+function addRecurTime() {
+  const input = document.getElementById('newRecurTimeInput');
+  if (!input.value) { toast('اختار وقت الأول', 'error'); return; }
+  if (!currentRecurTimes.includes(input.value)) currentRecurTimes.push(input.value);
+  input.value = '';
+  renderRecurTimesList();
+}
+
+// بيحسب أقرب موعد فعلي (من تاريخ البدء فصاعداً) بيتوافق مع الأيام المختارة، وبياخد أول وقت (الأصغر) في اليوم ده كنقطة انطلاق التكرار
+function computeFirstTimesOccurrence(dateStr, sortedTimes, days) {
+  if (!sortedTimes.length) return null;
+  const activeDays = (days && days.length) ? new Set(days) : null;
+  const [h, m] = sortedTimes[0].split(':').map(Number);
+  let dayCursor = new Date(`${dateStr}T00:00:00`);
+  let guard = 0;
+  while (guard < 3660) {
+    guard++;
+    if (!activeDays || activeDays.has(dayCursor.getDay())) {
+      const cand = new Date(dayCursor);
+      cand.setHours(h, m, 0, 0);
+      return cand;
+    }
+    dayCursor = new Date(dayCursor.getTime() + 24 * 60 * 60 * 1000);
+  }
+  return null;
+}
+
 function openModal(task, prefillDate, duplicateSource, personalMode) {
   const src = task || duplicateSource || null;
   editingTaskId = task ? task.id : null;
@@ -2265,6 +2398,10 @@ function openModal(task, prefillDate, duplicateSource, personalMode) {
   if (!task) {
     document.querySelectorAll('.day-chip').forEach(chip => chip.classList.add('active'));
     document.getElementById('f_recurrence_end_time').value = '';
+    setRecurMode('interval');
+    currentRecurTimes = [];
+    document.getElementById('newRecurTimeInput').value = '';
+    renderRecurTimesList();
   }
 
   const mode = (src?.review_mode === 'recurring') ? 'recurring' : 'once';
@@ -2285,6 +2422,13 @@ function openModal(task, prefillDate, duplicateSource, personalMode) {
   } else {
     document.getElementById('f_recurrence_value').value = src?.recurrence_value || 2;
     document.getElementById('f_recurrence_unit').value = src?.recurrence_unit || 'hours';
+
+    const recurMode = (src?.recurrence_mode === 'times') ? 'times' : 'interval';
+    setRecurMode(recurMode);
+    currentRecurTimes = (recurMode === 'times' && Array.isArray(src?.recurrence_times)) ? src.recurrence_times.slice().sort() : [];
+    document.getElementById('newRecurTimeInput').value = '';
+    renderRecurTimesList();
+
     if (src) {
       document.getElementById('f_recurrence_start_date').value = toLocalDateStr(src.review_at);
       document.getElementById('f_recurrence_start_time').value = toLocalTimeStr(src.review_at);
@@ -2373,6 +2517,8 @@ async function saveTask(e) {
     payload.recurrence_unit = null;
     payload.recurrence_days = null;
     payload.recurrence_end_time = null;
+    payload.recurrence_mode = null;
+    payload.recurrence_times = null;
     if (sortedDates.length === 1) {
       payload.review_mode = 'once';
       payload.custom_dates = null;
@@ -2382,16 +2528,33 @@ async function saveTask(e) {
     }
   } else {
     const dateVal = document.getElementById('f_recurrence_start_date').value;
-    const timeVal = document.getElementById('f_recurrence_start_time').value;
-    if (!dateVal || !timeVal) { toast('حدد تاريخ بدء التكرار والساعة اللي يبدأ منها', 'error'); resetSaveBtn(); return; }
-    payload.review_at = new Date(`${dateVal}T${timeVal}`).toISOString();
-    payload.recurrence_value = parseInt(document.getElementById('f_recurrence_value').value, 10);
-    payload.recurrence_unit = document.getElementById('f_recurrence_unit').value;
+    if (!dateVal) { toast('حدد تاريخ بدء التكرار', 'error'); resetSaveBtn(); return; }
 
     const activeChips = [...document.querySelectorAll('.day-chip.active')].map(c => Number(c.dataset.day));
     // لو كل الأيام مفعّلة، نخزّن null (يعني كل يوم) بدل ما نخزن مصفوفة فيها كل الأرقام
     payload.recurrence_days = activeChips.length === 7 ? null : activeChips;
-    payload.recurrence_end_time = document.getElementById('f_recurrence_end_time').value || null;
+
+    if (currentRecurMode === 'times') {
+      if (currentRecurTimes.length === 0) { toast('ضيف وقت واحد على الأقل', 'error'); resetSaveBtn(); return; }
+      const sortedTimes = currentRecurTimes.slice().sort();
+      const anchor = computeFirstTimesOccurrence(dateVal, sortedTimes, payload.recurrence_days);
+      if (!anchor) { toast('محدش من الأيام المختارة بيتوافق مع الأوقات دي، راجع الاختيار', 'error'); resetSaveBtn(); return; }
+      payload.review_at = anchor.toISOString();
+      payload.recurrence_mode = 'times';
+      payload.recurrence_times = sortedTimes;
+      payload.recurrence_value = null;
+      payload.recurrence_unit = null;
+      payload.recurrence_end_time = null;
+    } else {
+      const timeVal = document.getElementById('f_recurrence_start_time').value;
+      if (!timeVal) { toast('حدد الساعة اللي يبدأ التكرار منها', 'error'); resetSaveBtn(); return; }
+      payload.review_at = new Date(`${dateVal}T${timeVal}`).toISOString();
+      payload.recurrence_value = parseInt(document.getElementById('f_recurrence_value').value, 10);
+      payload.recurrence_unit = document.getElementById('f_recurrence_unit').value;
+      payload.recurrence_end_time = document.getElementById('f_recurrence_end_time').value || null;
+      payload.recurrence_mode = 'interval';
+      payload.recurrence_times = null;
+    }
   }
 
   let error;
