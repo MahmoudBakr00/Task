@@ -753,8 +753,8 @@ let notifiedKeys = new Set(JSON.parse(localStorage.getItem('notifiedKeys') || '[
 const REFRESH_INTERVAL_MS = 30 * 1000;
 const CHECK_NOTIFY_INTERVAL_MS = 60 * 1000;
 
-const ROLE_LABELS = { admin: 'أدمن', engineer: 'مهندس', supervisor: 'مشرف', technician: 'فني' };
-const ROLE_RANK = { admin: 4, engineer: 3, supervisor: 2, technician: 1 };
+const ROLE_LABELS = { admin: 'أدمن', engineer: 'مهندس', general_supervisor: 'مشرف عام', supervisor: 'مشرف', technician: 'فني' };
+const ROLE_RANK = { admin: 5, engineer: 4, general_supervisor: 3, supervisor: 2, technician: 1 };
 const EMPLOYEE_EMAIL_DOMAIN = 'mee-tasks.local';
 
 let currentUser = null;
@@ -1138,8 +1138,17 @@ function formatExact(iso) {
 async function loadTasks() {
   let query = supabase.from('tasks').select('*').order('review_at', { ascending: true });
 
-  if (currentProfile.role === 'technician') {
+  if (currentProfile.role === 'admin' || currentProfile.role === 'engineer') {
+    // الأدمن والمهندسين بيشوفوا كل التاسكات في السيستم من غير أي قيد
+  } else if (currentProfile.role === 'technician') {
     query = query.eq('assigned_to', currentUser.id);
+  } else if (currentProfile.role === 'general_supervisor') {
+    // المشرف العام بيشوف تاسكاته + أي تاسك متكلف بيه حد رتبته مشرف عام أو أقل (مشرف، فني)
+    const myRank = ROLE_RANK.general_supervisor;
+    const subordinateIds = allProfiles.filter(p => (ROLE_RANK[p.role] || 0) <= myRank).map(p => p.id);
+    const orParts = [`created_by.eq.${currentUser.id}`, `assigned_to.eq.${currentUser.id}`];
+    if (subordinateIds.length) orParts.push(`assigned_to.in.(${subordinateIds.join(',')})`);
+    query = query.or(orParts.join(','));
   } else {
     query = query.or(`created_by.eq.${currentUser.id},assigned_to.eq.${currentUser.id}`);
   }
@@ -1444,7 +1453,10 @@ function bindUI() {
   document.getElementById('f_assigned_to_search').addEventListener('input', () => renderAssigneeSuggestions(document.getElementById('f_assigned_to_search').value));
   document.getElementById('f_assigned_to_search').addEventListener('focus', () => renderAssigneeSuggestions(document.getElementById('f_assigned_to_search').value));
   document.getElementById('f_assigned_to_search').addEventListener('blur', () => {
-    setTimeout(() => { document.getElementById('assigneeSuggestList').hidden = true; }, 120);
+    setTimeout(() => {
+      document.getElementById('assigneeSuggestList').hidden = true;
+      validateAssigneeSelection();
+    }, 120);
   });
 
   document.getElementById('f_employee_code').addEventListener('input', () => renderCodeSuggestions(document.getElementById('f_employee_code').value));
@@ -2258,6 +2270,38 @@ function onAssigneeChange() {
     document.getElementById('f_requires_evidence').checked = false;
     onEvidenceCheckChange();
   }
+}
+
+// بتتأكد إن النص المكتوب في خانة "تكليف لموظف" بيطابق فعلاً موظف تم اختياره من القايمة.
+// من غير الفحص ده، لو المستخدم كتب اسم وطلع من الخانة من غير ما يدوس على اقتراح من القايمة،
+// كان بيفضل شكلياً حاطط اسم بس الـ id الحقيقي فاضي، فيختفي خيار "يتطلب دليل" بصمت.
+function validateAssigneeSelection() {
+  const searchInput = document.getElementById('f_assigned_to_search');
+  const hiddenInput = document.getElementById('f_assigned_to');
+  const typedName = searchInput.value.trim();
+
+  if (!typedName) {
+    hiddenInput.value = '';
+    onAssigneeChange();
+    return;
+  }
+
+  const assignable = getAssignableProfiles();
+  const currentMatch = assignable.find(p => p.id === hiddenInput.value);
+  if (currentMatch && currentMatch.full_name === typedName) {
+    onAssigneeChange();
+    return; // القيمة متطابقة فعلاً، مفيش داعي نغيّر حاجة
+  }
+
+  const exactMatch = assignable.find(p => p.full_name === typedName);
+  if (exactMatch) {
+    hiddenInput.value = exactMatch.id;
+  } else {
+    hiddenInput.value = '';
+    searchInput.value = '';
+    toast('لازم تختار الموظف من القايمة اللي بتظهر تحت الخانة عشان التكليف يتسجل صح', 'error');
+  }
+  onAssigneeChange();
 }
 
 function onEvidenceCheckChange() {
