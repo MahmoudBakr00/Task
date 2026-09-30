@@ -309,7 +309,7 @@ textarea{resize:vertical;min-height:64px}
     </div>
   </div>
 
-  <div class="stats-date-range">
+  <div class="stats-date-range" id="statsDateRangeRow">
     <label>فترة الإحصائيات:</label>
     <input type="date" id="statsFromDate">
     <span>—</span>
@@ -317,13 +317,20 @@ textarea{resize:vertical;min-height:64px}
     <button class="btn btn-ghost btn-sm" id="statsRangeClearBtn">الكل</button>
   </div>
 
-  <div class="stats-strip">
+  <div class="stats-strip" id="statsStripDefault">
     <div class="stat-card late" data-stat="late"><div class="stat-num" id="statLate">0</div><div class="stat-label">متأخرة</div></div>
     <div class="stat-card warn" data-stat="warn"><div class="stat-num" id="statWarn">0</div><div class="stat-label">قربت تستحق</div></div>
     <div class="stat-card ok" data-stat="ok"><div class="stat-num" id="statOk">0</div><div class="stat-label">في الموعد</div></div>
     <div class="stat-card done" data-stat="done"><div class="stat-num" id="statDone">0</div><div class="stat-label">منفّذة</div></div>
     <div class="stat-card total" data-stat="total"><div class="stat-num" id="statTotal">0</div><div class="stat-label">إجمالي في الفترة</div></div>
     <div class="stat-card total" data-stat="personal"><div class="stat-num" id="statPersonal">0</div><div class="stat-label">المهام الشخصية</div></div>
+  </div>
+
+  <div class="stats-strip" id="statsStripTechnician" hidden>
+    <div class="stat-card late"><div class="stat-num" id="techStatLate">0</div><div class="stat-label">متأخرة اليوم</div></div>
+    <div class="stat-card warn"><div class="stat-num" id="techStatDueSoon">0</div><div class="stat-label">مستحقة خلال الساعة</div></div>
+    <div class="stat-card ok"><div class="stat-num" id="techStatOnTime">0</div><div class="stat-label">منفّذ في الوقت</div></div>
+    <div class="stat-card late"><div class="stat-num" id="techStatLateExec">0</div><div class="stat-label">متأخر في التنفيذ</div></div>
   </div>
 
   <div class="view-tabs">
@@ -333,7 +340,7 @@ textarea{resize:vertical;min-height:64px}
   </div>
 
   <div id="listView">
-  <div class="filters">
+  <div class="filters" id="listFiltersBar">
     <input type="text" class="search-box" id="searchInput" placeholder="بحث بالاسم أو الكود أو التاسك...">
     <select id="filterLine"><option value="">كل الخطوط</option></select>
     <select id="filterStage"><option value="">كل المراحل</option></select>
@@ -800,6 +807,13 @@ function setupRoleBasedUI() {
   // تنزيل التاسكات (Excel) وكل الصور (ZIP) متاح بس للمهندس والأدمن
   const canExportAll = currentProfile.role === 'admin' || currentProfile.role === 'engineer';
   document.getElementById('historyExportRow').hidden = !canExportAll;
+
+  // شاشة مبسطة للفني: كارتات إحصائيات مختصرة، من غير فلاتر ولا فترة إحصائيات
+  const isTechnician = currentProfile.role === 'technician';
+  document.getElementById('statsStripDefault').hidden = isTechnician;
+  document.getElementById('statsStripTechnician').hidden = !isTechnician;
+  document.getElementById('statsDateRangeRow').hidden = isTechnician;
+  document.getElementById('listFiltersBar').hidden = isTechnician;
 }
 
 function openEmployeeModal() {
@@ -1183,6 +1197,11 @@ let lastFilteredTasks = [];
 let lastCompletedRecords = [];
 
 function renderStats() {
+  if (currentProfile && currentProfile.role === 'technician') {
+    renderTechnicianStats();
+    return;
+  }
+
   const fromVal = document.getElementById('statsFromDate').value;
   const toVal = document.getElementById('statsToDate').value;
   const fromDate = fromVal ? new Date(fromVal + 'T00:00:00') : null;
@@ -1213,6 +1232,56 @@ function renderStats() {
   document.getElementById('statPersonal').textContent = personal;
 
   loadCompletedInRange(fromVal, toVal);
+}
+
+// إحصائيات مبسطة للفني: تسكات اليوم بس، من غير فترة زمنية قابلة للتعديل
+function renderTechnicianStats() {
+  const now = new Date();
+  const today = new Date(now); today.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
+
+  let lateToday = 0, dueWithinHour = 0;
+  tasks.forEach(t => {
+    if (t.status === 'done') return;
+    const due = new Date(t.review_at);
+    if (due < today || due >= tomorrow) return; // بس تسكات النهاردة
+    if (due.getTime() < now.getTime()) lateToday++;
+    else if (due.getTime() <= now.getTime() + 60 * 60 * 1000) dueWithinHour++;
+  });
+
+  document.getElementById('techStatLate').textContent = lateToday;
+  document.getElementById('techStatDueSoon').textContent = dueWithinHour;
+
+  loadTechnicianExecutionStatsToday();
+}
+
+// عدد المنفذ في الوقت والمتأخر في التنفيذ للفني اليوم (من سجل task_completions)
+async function loadTechnicianExecutionStatsToday() {
+  const now = new Date();
+  const startOfDay = new Date(now); startOfDay.setHours(0, 0, 0, 0);
+
+  const { data, error } = await supabase
+    .from('task_completions')
+    .select('planned_at, actual_completed_at')
+    .eq('completed_by', currentUser.id)
+    .gte('actual_completed_at', startOfDay.toISOString());
+
+  if (error) {
+    document.getElementById('techStatOnTime').textContent = '—';
+    document.getElementById('techStatLateExec').textContent = '—';
+    return;
+  }
+
+  let onTime = 0, lateExec = 0;
+  (data || []).forEach(r => {
+    if (!r.planned_at) { onTime++; return; }
+    const diff = new Date(r.actual_completed_at).getTime() - new Date(r.planned_at).getTime();
+    if (diff > LATE_EXECUTION_THRESHOLD_MS) lateExec++;
+    else onTime++;
+  });
+
+  document.getElementById('techStatOnTime').textContent = onTime;
+  document.getElementById('techStatLateExec').textContent = lateExec;
 }
 
 async function loadCompletedInRange(fromVal, toVal) {
@@ -1282,6 +1351,18 @@ function getFilteredSortedTasks() {
     }
     return true;
   });
+
+  // للفني: يشوف بس تسكات النهاردة اللي لسه في وقتها (مش فاتت أكتر من 30 دقيقة) — من غير تنفيذ بأثر رجعي بعيد
+  if (currentProfile && currentProfile.role === 'technician') {
+    const now = new Date();
+    const today = new Date(now); today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
+    list = list.filter(t => {
+      const due = new Date(t.review_at);
+      if (due < today || due >= tomorrow) return false;
+      return due.getTime() >= now.getTime() - TECH_LATE_CUTOFF_MS;
+    });
+  }
 
   list.sort((a, b) => {
     if (sortBy === 'review_at_asc') return new Date(a.review_at) - new Date(b.review_at);
@@ -1530,6 +1611,8 @@ function bindTaskRowActions(containerId) {
 }
 
 const EARLY_EXECUTION_GRACE_MS = 10 * 60 * 1000; // 10 دقايق قبل الموعد المحدد
+const TECH_LATE_CUTOFF_MS = 30 * 60 * 1000; // للفني بس: بعد 30 دقيقة من الموعد، التاسك يعتبر فات وقته ومينفعش ينفذه بأثر رجعي
+const LATE_EXECUTION_THRESHOLD_MS = 10 * 60 * 1000; // التنفيذ يعتبر "متأخر" لو حصل بعد الموعد بأكتر من 10 دقايق
 
 function canExecuteTask(task) {
   if (task.status === 'done') return false;
@@ -1541,15 +1624,30 @@ function canExecuteTask(task) {
   const today = new Date(now); today.setHours(0, 0, 0, 0);
   if (dueDay > today) return false;
 
-  return now.getTime() >= due.getTime() - EARLY_EXECUTION_GRACE_MS;
+  if (now.getTime() < due.getTime() - EARLY_EXECUTION_GRACE_MS) return false;
+
+  // بالنسبة للفني تحديداً: مينفعش ينفذ تاسك فات وقته بأكتر من نص ساعة (من غير تنفيذ بأثر رجعي لتسكات قديمة)
+  if (currentProfile && currentProfile.role === 'technician' && now.getTime() > due.getTime() + TECH_LATE_CUTOFF_MS) return false;
+
+  return true;
 }
 
 function earlyExecutionMessage(task) {
   const due = new Date(task.review_at).getTime();
-  const remainingMs = due - EARLY_EXECUTION_GRACE_MS - Date.now();
-  const mins = Math.round(remainingMs / 60000);
-  const text = mins >= 60 ? `${Math.round(remainingMs / 3600000)} س` : `${mins} د`;
-  return `لسه بدري — تقدر تنفذ المهمة دي بعد ${text} (10 دقايق قبل الموعد المحدد: ${formatExact(task.review_at)})`;
+  const now = Date.now();
+
+  if (now < due - EARLY_EXECUTION_GRACE_MS) {
+    const remainingMs = due - EARLY_EXECUTION_GRACE_MS - now;
+    const mins = Math.round(remainingMs / 60000);
+    const text = mins >= 60 ? `${Math.round(remainingMs / 3600000)} س` : `${mins} د`;
+    return `لسه بدري — تقدر تنفذ المهمة دي بعد ${text} (10 دقايق قبل الموعد المحدد: ${formatExact(task.review_at)})`;
+  }
+
+  if (currentProfile && currentProfile.role === 'technician' && now > due + TECH_LATE_CUTOFF_MS) {
+    return `فات وقت تنفيذ المهمة دي (كانت مستحقة الساعة ${formatExact(task.review_at)}) — اتسجلت متأخرة ومينفعش تتنفذ دلوقتي`;
+  }
+
+  return 'مينفعش تنفذ المهمة دي دلوقتي';
 }
 
 
