@@ -115,6 +115,11 @@ body{background-image:radial-gradient(circle at 15% 0%,rgba(0,120,212,.04),trans
 .evidence-entry .ev-label{color:var(--text-muted)}
 .evidence-entry .ev-value{color:var(--text-primary);font-weight:600}
 .evidence-thumb{width:52px;height:52px;object-fit:cover;border-radius:5px;border:1px solid var(--border);cursor:pointer;display:block;margin-top:2px}
+.evidence-capture-thumbs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+.evidence-capture-thumb{position:relative;width:72px;height:72px}
+.evidence-capture-thumb img{width:100%;height:100%;object-fit:cover;border-radius:6px;border:1px solid var(--border)}
+.evidence-capture-thumb .remove-thumb-btn{position:absolute;top:-6px;left:-6px;width:20px;height:20px;border-radius:50%;background:var(--status-late);color:#fff;border:2px solid #fff;cursor:pointer;font-size:11px;line-height:1;display:flex;align-items:center;justify-content:center;padding:0}
+.evidence-capture-btn{width:auto}
 @media (max-width:860px){
   .history-table{min-width:760px}
 }
@@ -390,11 +395,17 @@ textarea{resize:vertical;min-height:64px}
       <input type="date" id="histFromDate" title="من تاريخ">
       <input type="date" id="histToDate" title="لحد تاريخ">
     </div>
+    <div class="filters" id="historyExportRow" hidden>
+      <button type="button" class="btn btn-sm btn-ghost" id="exportExcelBtn">⬇️ تنزيل التاسكات (Excel)</button>
+      <button type="button" class="btn btn-sm btn-ghost" id="exportImagesBtn">🗜️ تنزيل كل الصور (ZIP)</button>
+      <span class="hint">التنزيل بياخد بعين الاعتبار الفلاتر المختارة فوق</span>
+    </div>
     <div class="board-panel">
       <div class="history-table-wrap">
         <table class="history-table">
           <thead>
             <tr>
+              <th>الكود</th>
               <th>التاريخ الفعلي</th>
               <th>الموظف / الخط</th>
               <th>التاسك</th>
@@ -739,6 +750,7 @@ textarea{resize:vertical;min-height:64px}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script>
 (function() {
 const SUPABASE_URL = 'https://tzjegripbztrqdfvretb.supabase.co';
@@ -784,6 +796,10 @@ function setupRoleBasedUI() {
 
   const bulkRoleSelect = document.getElementById('bulkRoleSelect');
   bulkRoleSelect.innerHTML = assignable.map(r => `<option value="${r}">${ROLE_LABELS[r]}</option>`).join('');
+
+  // تنزيل التاسكات (Excel) وكل الصور (ZIP) متاح بس للمهندس والأدمن
+  const canExportAll = currentProfile.role === 'admin' || currentProfile.role === 'engineer';
+  document.getElementById('historyExportRow').hidden = !canExportAll;
 }
 
 function openEmployeeModal() {
@@ -1412,6 +1428,8 @@ function bindUI() {
   document.getElementById('viewTabList').addEventListener('click', () => switchView('list'));
   document.getElementById('viewTabCalendar').addEventListener('click', () => switchView('calendar'));
   document.getElementById('viewTabHistory').addEventListener('click', () => switchView('history'));
+  document.getElementById('exportExcelBtn').addEventListener('click', exportHistoryToExcel);
+  document.getElementById('exportImagesBtn').addEventListener('click', exportHistoryImagesZip);
   ['histSearchInput', 'histPersonFilter', 'histOnTimeFilter', 'histFromDate', 'histToDate'].forEach(id => {
     document.getElementById(id).addEventListener('input', renderHistoryList);
     document.getElementById(id).addEventListener('change', renderHistoryList);
@@ -1595,6 +1613,23 @@ function historyStatus(planned, actual) {
   return { key: 'late', label: `متأخر بـ ${text}` };
 }
 
+// كود تلقائي لكل تسكاية: كود الموظف + تاريخ التنفيذ المخطط + الوقت المفترض للتنفيذ + جزء صغير مميز
+// الهدف إنه يبقى مفتاح سهل تدور بيه على التاسك وصوره مع بعض
+function buildTaskCode(r) {
+  const empCode = (r.employee_code && String(r.employee_code).trim()) || 'بدون-كود';
+  const planned = r.planned_at ? new Date(r.planned_at) : null;
+  const datePart = planned
+    ? `${planned.getFullYear()}${String(planned.getMonth() + 1).padStart(2, '0')}${String(planned.getDate()).padStart(2, '0')}`
+    : '00000000';
+  const timePart = planned
+    ? `${String(planned.getHours()).padStart(2, '0')}${String(planned.getMinutes()).padStart(2, '0')}`
+    : '0000';
+  const shortId = (r.id ? String(r.id) : Math.random().toString(36)).slice(-4).toUpperCase();
+  return `${empCode}-${datePart}-${timePart}-${shortId}`;
+}
+
+let lastFilteredHistory = [];
+
 function renderHistoryList() {
   const search = document.getElementById('histSearchInput').value.trim().toLowerCase();
   const person = document.getElementById('histPersonFilter').value;
@@ -1618,6 +1653,8 @@ function renderHistoryList() {
     return true;
   });
 
+  lastFilteredHistory = list;
+
   const container = document.getElementById('historyList');
   const empty = document.getElementById('historyEmpty');
 
@@ -1632,6 +1669,7 @@ function renderHistoryList() {
     const status = historyStatus(r.planned_at, r.actual_completed_at);
     return `
     <tr>
+      <td class="h-time-b">${escapeHtml(buildTaskCode(r))}</td>
       <td class="h-time-b">${formatExact(r.actual_completed_at)}</td>
       <td>
         <div class="h-name">${escapeHtml(r.employee_name || '—')}</div>
@@ -1671,12 +1709,109 @@ function renderEvidenceCell(r) {
     const type = typeFor(stepId);
     const label = escapeHtml(labelFor(stepId));
     if (type === 'image') {
+      const urls = Array.isArray(value) ? value : [value]; // توافق مع سجلات قديمة كانت بتخزن صورة واحدة كنص
       return `<div class="evidence-entry"><span class="ev-label">${label}:</span><br>
-        <img class="evidence-thumb" src="${value}" data-evidence-image="${value}" title="دوس للتكبير">
+        <div class="evidence-capture-thumbs">${urls.map(u => `<img class="evidence-thumb" src="${u}" data-evidence-image="${u}" title="دوس للتكبير">`).join('')}</div>
       </div>`;
     }
     return `<div class="evidence-entry"><span class="ev-label">${label}:</span> <span class="ev-value">${escapeHtml(String(value))}</span></div>`;
   }).join('')}</div>`;
+}
+
+function pad2(n) { return String(n).padStart(2, '0'); }
+function todayStampForFile() {
+  const d = new Date();
+  return `${d.getFullYear()}${pad2(d.getMonth() + 1)}${pad2(d.getDate())}-${pad2(d.getHours())}${pad2(d.getMinutes())}`;
+}
+
+// تنزيل التاسكات المعروضة حالياً (بعد الفلاتر) كملف Excel، مع عمود الكود التلقائي لكل صف
+function exportHistoryToExcel() {
+  if (!lastFilteredHistory.length) { toast('مفيش تاسكات في النتيجة الحالية عشان تتصدّر', 'error'); return; }
+
+  const rows = lastFilteredHistory.map(r => ({
+    'الكود': buildTaskCode(r),
+    'اسم الموظف': r.employee_name || '',
+    'كود الموظف': r.employee_code || '',
+    'الخط': r.line || '',
+    'المرحلة': r.stage || '',
+    'التاسك': r.task_description || '',
+    'المكلّف': r.assigned_to_name || '',
+    'اللي نفّذ': r.completed_by_name || '',
+    'الموعد المخطط': r.planned_at ? formatExact(r.planned_at) : '',
+    'وقت التنفيذ الفعلي': r.actual_completed_at ? formatExact(r.actual_completed_at) : '',
+    'الحالة': historyStatus(r.planned_at, r.actual_completed_at).label,
+    'محتاج دليل؟': r.requires_evidence ? 'نعم' : 'لا',
+  }));
+
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'سجل التنفيذ');
+  XLSX.writeFile(wb, `سجل-التنفيذ-${todayStampForFile()}.xlsx`);
+}
+
+// تنزيل كل صور الدليل الخاصة بالتاسكات المعروضة حالياً في ملف ZIP واحد،
+// وكل صورة بتتسمى بنفس كود التسكاية عشان تربط بسهولة بين ملف الإكسيل وملفات الصور
+async function exportHistoryImagesZip() {
+  if (typeof JSZip === 'undefined') { toast('مكتبة ضغط الملفات مش محمّلة، جرّب تحدّث الصفحة', 'error'); return; }
+  if (!lastFilteredHistory.length) { toast('مفيش تاسكات في النتيجة الحالية عشان تتصدّر', 'error'); return; }
+
+  const withImages = lastFilteredHistory.filter(r => r.requires_evidence && r.evidence_values);
+
+  const jobs = []; // { code, label, idx, url }
+  withImages.forEach(r => {
+    const code = buildTaskCode(r);
+    const steps = r.evidence_steps || [];
+    Object.entries(r.evidence_values).forEach(([stepId, value]) => {
+      const step = steps.find(s => s.id === stepId);
+      if (!step || step.type !== 'image') return;
+      const urls = Array.isArray(value) ? value : [value]; // توافق مع سجلات قديمة كانت بتخزن صورة واحدة كنص
+      urls.forEach((url, idx) => jobs.push({ code, label: step.label || 'صورة', idx, url }));
+    });
+  });
+
+  const totalImages = jobs.length;
+  if (totalImages === 0) { toast('مفيش صور في النتيجة الحالية', 'error'); return; }
+
+  const btn = document.getElementById('exportImagesBtn');
+  const originalText = btn.textContent;
+  btn.disabled = true;
+
+  const zip = new JSZip();
+  const usedNames = new Set();
+  let done = 0;
+
+  for (const job of jobs) {
+    btn.textContent = `جاري التجهيز (${done}/${totalImages})...`;
+    try {
+      const res = await fetch(job.url);
+      const blob = await res.blob();
+      const ext = blob.type && blob.type.includes('png') ? 'png' : 'jpg';
+      const safeLabel = String(job.label).replace(/[\\/:*?"<>|]/g, '_');
+      let fileName = `${job.code}_${safeLabel}_${job.idx + 1}.${ext}`;
+      let counter = 2;
+      while (usedNames.has(fileName)) { fileName = `${job.code}_${safeLabel}_${job.idx + 1}_${counter}.${ext}`; counter++; }
+      usedNames.add(fileName);
+      zip.file(fileName, blob);
+    } catch (err) {
+      console.warn('تعذّر تحميل صورة:', job.url, err);
+    }
+    done++;
+  }
+
+  btn.textContent = 'جاري إنشاء الملف المضغوط...';
+  const content = await zip.generateAsync({ type: 'blob' });
+  const url = URL.createObjectURL(content);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `صور-السجل-${todayStampForFile()}.zip`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+
+  btn.disabled = false;
+  btn.textContent = originalText;
+  toast('تم تجهيز ملف الصور بنجاح', 'success');
 }
 
 function setCalendarMode(mode) {
@@ -2650,6 +2785,7 @@ async function logCompletion(task, plannedAt, now, evidenceValues) {
   const { error } = await supabase.from('task_completions').insert({
     task_id: task.id,
     employee_name: task.employee_name,
+    employee_code: task.employee_code || null,
     task_description: task.task_description,
     line: task.line,
     stage: task.stage,
@@ -2684,9 +2820,10 @@ async function markReviewed(id) {
 // نافذة رفع الدليل عند التنفيذ
 // ------------------------------------------------------------
 let evidenceTaskId = null;
+let evidenceImages = {}; // { stepId: [File مضغوط بعد التقاطه بالكاميرا, ...] }
 
-// بتضغط أي صورة قبل الرفع (أقصى بعد 1600px + جودة JPEG 75%) عشان الرفع يبقى أسرع وأخف
-function compressImageFile(file, maxDim = 1600, quality = 0.75) {
+// بتضغط أي صورة قبل الرفع (أقصى بعد 1280px + جودة JPEG 62%) عشان الرفع يبقى أسرع، والحجم أصغر ما يمكن، مع بقاء الصورة واضحة عند العرض
+function compressImageFile(file, maxDim = 1280, quality = 0.62) {
   return new Promise((resolve) => {
     if (!file.type.startsWith('image/')) { resolve(file); return; }
 
@@ -2725,6 +2862,7 @@ function openEvidenceModal(id) {
   const task = tasks.find(t => t.id === id);
   if (!task) return;
   evidenceTaskId = id;
+  evidenceImages = {}; // { stepId: [File مضغوط, ...] } الصور اللي اتلقطت لسه ماتبعتتش
 
   document.getElementById('evidenceTaskLabel').textContent = `${task.employee_name} — ${task.task_description}`;
 
@@ -2732,9 +2870,13 @@ function openEvidenceModal(id) {
   const container = document.getElementById('evidenceFieldsContainer');
   container.innerHTML = steps.map(s => {
     if (s.type === 'image') {
+      evidenceImages[s.id] = [];
       return `<div class="form-row">
         <label>${escapeHtml(s.label)}</label>
-        <input type="file" accept="image/*" capture="environment" data-evidence-field="${s.id}" data-evidence-type="image" required>
+        <div class="evidence-capture-thumbs" id="thumbs_${s.id}"></div>
+        <button type="button" class="btn btn-sm btn-ghost evidence-capture-btn" data-capture-step="${s.id}">📷 التقاط صورة</button>
+        <input type="file" accept="image/*" capture="environment" data-camera-input="${s.id}" style="display:none;">
+        <div class="hint">تقدر تلتقط أكتر من صورة لنفس الخطوة دي — كل دوسة على الزرار هتفتحلك الكاميرا مباشرة</div>
       </div>`;
     }
     if (s.type === 'number') {
@@ -2749,13 +2891,59 @@ function openEvidenceModal(id) {
     </div>`;
   }).join('') || `<div class="hint">مفيش خطوات دليل محددة لهذه المهمة</div>`;
 
+  // اربط زرار "التقاط صورة" وحقل الكاميرا المخفي بكل خطوة من نوع صورة
+  container.querySelectorAll('[data-capture-step]').forEach(btn => {
+    const stepId = btn.dataset.captureStep;
+    const cameraInput = container.querySelector(`[data-camera-input="${stepId}"]`);
+    btn.addEventListener('click', () => cameraInput.click());
+    cameraInput.addEventListener('change', () => handleEvidenceCapture(stepId, cameraInput, btn));
+  });
+
   document.getElementById('evidenceModal').hidden = false;
+}
+
+async function handleEvidenceCapture(stepId, input, btn) {
+  const file = input.files[0];
+  input.value = ''; // نفضي حقل الكاميرا عشان نقدر نفتحه تاني ونلتقط صورة إضافية
+  if (!file) return;
+
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'جاري ضغط الصورة...';
+
+  const compressed = await compressImageFile(file);
+  evidenceImages[stepId] = evidenceImages[stepId] || [];
+  evidenceImages[stepId].push(compressed);
+  renderEvidenceThumbs(stepId);
+
+  btn.disabled = false;
+  btn.textContent = originalText;
+}
+
+function renderEvidenceThumbs(stepId) {
+  const wrap = document.getElementById(`thumbs_${stepId}`);
+  if (!wrap) return;
+  const files = evidenceImages[stepId] || [];
+  wrap.innerHTML = files.map((f, idx) => `
+    <div class="evidence-capture-thumb">
+      <img src="${URL.createObjectURL(f)}">
+      <button type="button" class="remove-thumb-btn" data-remove-thumb="${stepId}:::${idx}" title="حذف الصورة">✕</button>
+    </div>
+  `).join('');
+  wrap.querySelectorAll('[data-remove-thumb]').forEach(b => {
+    b.addEventListener('click', () => {
+      const [sId, idxStr] = b.dataset.removeThumb.split(':::');
+      evidenceImages[sId].splice(Number(idxStr), 1);
+      renderEvidenceThumbs(sId);
+    });
+  });
 }
 
 function closeEvidenceModal() {
   document.getElementById('evidenceModal').hidden = true;
   document.getElementById('evidenceForm').reset();
   evidenceTaskId = null;
+  evidenceImages = {};
 }
 
 async function submitEvidence(e) {
@@ -2764,37 +2952,49 @@ async function submitEvidence(e) {
   if (!task) return;
   if (!canExecuteTask(task)) { toast(earlyExecutionMessage(task), 'error'); closeEvidenceModal(); return; }
 
+  const steps = task.evidence_steps || [];
+
+  // تأكيد إن كل خطوة من نوع صورة عندها صورة واحدة على الأقل قبل ما نبدأ الرفع
+  for (const s of steps) {
+    if (s.type === 'image' && (!evidenceImages[s.id] || evidenceImages[s.id].length === 0)) {
+      toast(`لازم تلتقط صورة واحدة على الأقل لـ "${s.label}"`, 'error');
+      return;
+    }
+  }
+
   const submitBtn = document.getElementById('submitEvidenceBtn');
   submitBtn.disabled = true;
   submitBtn.textContent = 'جاري الرفع...';
 
-  const fields = [...document.querySelectorAll('[data-evidence-field]')];
   const values = {};
 
-  for (const field of fields) {
-    const stepId = field.dataset.evidenceField;
-    const type = field.dataset.evidenceType;
-
-    if (type === 'image') {
-      const file = field.files[0];
-      if (!file) { toast('ارفع كل الصور المطلوبة', 'error'); submitBtn.disabled = false; submitBtn.textContent = 'تأكيد التنفيذ'; return; }
-      submitBtn.textContent = 'جاري ضغط الصورة...';
-      const compressed = await compressImageFile(file);
-      submitBtn.textContent = 'جاري الرفع...';
-      const path = `${task.id}/${stepId}_${Date.now()}_${compressed.name}`;
-      const { error: uploadError } = await supabase.storage.from('task-evidence').upload(path, compressed);
+  // ارفع كل صور كل خطوة صورة (ممكن أكتر من صورة للخطوة الواحدة)
+  for (const s of steps) {
+    if (s.type !== 'image') continue;
+    const files = evidenceImages[s.id] || [];
+    const urls = [];
+    for (let i = 0; i < files.length; i++) {
+      submitBtn.textContent = `جاري رفع الصور... (${i + 1}/${files.length})`;
+      const path = `${task.id}/${s.id}_${Date.now()}_${i}_${files[i].name}`;
+      const { error: uploadError } = await supabase.storage.from('task-evidence').upload(path, files[i]);
       if (uploadError) {
-        toast('حصل خطأ في رفع الصورة: ' + uploadError.message, 'error');
+        toast('حصل خطأ في رفع صورة: ' + uploadError.message, 'error');
         submitBtn.disabled = false; submitBtn.textContent = 'تأكيد التنفيذ';
         return;
       }
       const { data: urlData } = supabase.storage.from('task-evidence').getPublicUrl(path);
-      values[stepId] = urlData.publicUrl;
-    } else {
-      const val = field.value.trim();
-      if (!val) { toast('املي كل الحقول المطلوبة', 'error'); submitBtn.disabled = false; submitBtn.textContent = 'تأكيد التنفيذ'; return; }
-      values[stepId] = val;
+      urls.push(urlData.publicUrl);
     }
+    values[s.id] = urls;
+  }
+
+  // باقي الحقول (نص/رقم)
+  const fields = [...document.querySelectorAll('[data-evidence-field]')];
+  for (const field of fields) {
+    const stepId = field.dataset.evidenceField;
+    const val = field.value.trim();
+    if (!val) { toast('املي كل الحقول المطلوبة', 'error'); submitBtn.disabled = false; submitBtn.textContent = 'تأكيد التنفيذ'; return; }
+    values[stepId] = val;
   }
 
   const now = new Date();
