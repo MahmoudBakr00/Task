@@ -149,6 +149,7 @@ textarea{resize:vertical;min-height:64px}
 .step-item{display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 12px;font-size:13px}
 .step-item .step-type-badge{font-size:10.5px;color:var(--text-muted);background:var(--bg-panel);border:1px solid var(--border);border-radius:999px;padding:2px 8px;margin-inline-start:8px}
 .step-item .remove-step-btn{background:transparent;border:none;color:var(--status-late);cursor:pointer;font-size:14px}
+.locked-by-program .remove-step-btn{display:none}
 .assignee-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:999px;padding:2px 8px;color:var(--text-muted);margin-top:4px}
 .evidence-badge{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;color:var(--accent);margin-top:4px}
 .toast-stack{position:fixed;bottom:20px;inset-inline-end:20px;display:grid;gap:10px;z-index:80}
@@ -337,6 +338,7 @@ textarea{resize:vertical;min-height:64px}
     <button class="view-tab active" id="viewTabList">📋 قائمة المهام</button>
     <button class="view-tab" id="viewTabCalendar">📅 التقويم</button>
     <button class="view-tab" id="viewTabHistory">📜 السجل</button>
+    <button class="view-tab" id="viewTabPrograms" hidden>🛑 مواعيد توقف الخط</button>
   </div>
 
   <div id="listView">
@@ -429,6 +431,20 @@ textarea{resize:vertical;min-height:64px}
       <div class="empty-state" id="historyEmpty" hidden>
         <h3>مفيش سجل لسه</h3>
         <p>أي مهمة تتنفذ هتظهر هنا تلقائياً</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="programsView" hidden>
+    <div class="filters">
+      <button type="button" class="btn btn-primary btn-sm" id="addProgramBtn">+ برنامج جديد</button>
+      <span class="hint">أي تعديل في برنامج هنا هيتطبق تلقائياً على كل التاسكات المربوطة بيه (زي تبديل الورديات)</span>
+    </div>
+    <div class="board-panel">
+      <div id="programsList" class="steps-list"></div>
+      <div class="empty-state" id="programsEmpty" hidden>
+        <h3>مفيش برامج لسه</h3>
+        <p>اعمل برنامج (زي "وردية صباحية" أو "توقف الخط كل ساعتين") وبعدين اربطه بأي موظف من صفحة إضافة مهمة</p>
       </div>
     </div>
   </div>
@@ -548,6 +564,90 @@ textarea{resize:vertical;min-height:64px}
   </div>
 </div>
 
+<div class="modal-overlay" id="programModal" hidden>
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="programModalTitle">برنامج جديد</h2>
+      <button class="icon-btn" id="closeProgramModalBtn">✕</button>
+    </div>
+    <form id="programForm">
+      <div class="modal-body">
+        <div class="form-row">
+          <label for="pg_name">اسم البرنامج *</label>
+          <input type="text" id="pg_name" required placeholder="مثلاً: وردية صباحية — توقف الخط كل ساعتين">
+        </div>
+        <div class="form-row">
+          <label for="pg_task">التاسك المطلوب *</label>
+          <textarea id="pg_task" required placeholder="وصف التاسك اللي هيتكرر حسب الجدول ده..."></textarea>
+        </div>
+
+        <div class="form-row">
+          <label>طريقة التكرار</label>
+          <div class="mode-toggle">
+            <button type="button" id="pgRecurModeIntervalBtn" class="active">فاصل زمني</button>
+            <button type="button" id="pgRecurModeTimesBtn">أوقات محددة يومياً</button>
+          </div>
+
+          <div class="form-row" id="pgRecurIntervalSection" style="margin-top:12px;">
+            <label>كل</label>
+            <div class="recurrence-row">
+              <input type="number" id="pg_recurrence_value" min="1" value="2">
+              <select id="pg_recurrence_unit">
+                <option value="minutes">دقيقة</option>
+                <option value="hours" selected>ساعة</option>
+                <option value="days">يوم</option>
+                <option value="weeks">أسبوع</option>
+              </select>
+            </div>
+            <div class="form-row-2" style="margin-top:10px;">
+              <div class="form-row">
+                <label for="pg_recurrence_start_time">من الساعة *</label>
+                <input type="time" id="pg_recurrence_start_time">
+              </div>
+              <div class="form-row">
+                <label for="pg_recurrence_end_time">لحد الساعة (اختياري)</label>
+                <input type="time" id="pg_recurrence_end_time">
+              </div>
+            </div>
+            <div class="hint">لو حددت "لحد الساعة" أصغر من "من الساعة"، هيتفهم تلقائي إنها وردية ليلية بتعدي نص الليل (زي من 9م لحد 8ص)</div>
+          </div>
+
+          <div class="form-row" id="pgRecurTimesSection" style="margin-top:12px;" hidden>
+            <label>أوقات التنفيذ خلال اليوم</label>
+            <div id="pgRecurTimesList" class="steps-list"></div>
+            <div class="form-row-2" style="margin-top:8px;align-items:end;">
+              <div class="form-row">
+                <label for="pg_newRecurTimeInput">أضف وقت</label>
+                <input type="time" id="pg_newRecurTimeInput">
+              </div>
+              <button type="button" class="btn btn-primary btn-sm" id="pgAddRecurTimeBtn">+ إضافة وقت</button>
+            </div>
+          </div>
+
+          <div class="form-row" style="margin-top:12px;" id="pgDayPicker">
+            <label>الأيام (سيبها كلها من غير تحديد لو شغّال كل يوم)</label>
+            <div class="day-picker">
+              <button type="button" class="day-chip active" data-day="0">أحد</button>
+              <button type="button" class="day-chip active" data-day="1">اتنين</button>
+              <button type="button" class="day-chip active" data-day="2">تلات</button>
+              <button type="button" class="day-chip active" data-day="3">أربع</button>
+              <button type="button" class="day-chip active" data-day="4">خميس</button>
+              <button type="button" class="day-chip active" data-day="5">جمعة</button>
+              <button type="button" class="day-chip active" data-day="6">سبت</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="hint" id="programLinkedHint" hidden>مربوط حالياً بـ <b id="programLinkedCount">0</b> تاسك — أي حفظ هنا هيحدّث المواعيد عندهم كلهم تلقائياً.</div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" id="cancelProgramModalBtn">إلغاء</button>
+        <button type="submit" class="btn btn-primary" id="saveProgramBtn">حفظ البرنامج</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <div class="modal-overlay" id="dayTasksModal" hidden>
   <div class="modal">
     <div class="modal-header">
@@ -656,6 +756,14 @@ textarea{resize:vertical;min-height:64px}
         </div>
         </div>
 
+        <div class="form-row" id="programPickRow" hidden>
+          <label for="f_program_select">اربط بجدول/برنامج جاهز (اختياري)</label>
+          <select id="f_program_select">
+            <option value="">بدون — تحديد المواعيد يدوي</option>
+          </select>
+          <div class="hint">لو اخترت برنامج، التاسك والمواعيد هتتظبط تلقائي منه، وأي تعديل تعمله على البرنامج بعدين هيتحدّث عند كل اللي مربوطين بيه</div>
+        </div>
+
         <div class="form-row">
           <label>معاد المراجعة</label>
           <div class="mode-toggle">
@@ -663,6 +771,7 @@ textarea{resize:vertical;min-height:64px}
             <button type="button" id="modeRecurringBtn">تكرار دوري</button>
           </div>
         </div>
+        <input type="hidden" id="f_program_id">
         <div class="form-row" id="onceRow">
           <label>مواعيد المراجعة</label>
           <div id="customDatesList" class="steps-list"></div>
@@ -807,6 +916,9 @@ function setupRoleBasedUI() {
   // تنزيل التاسكات (Excel) وكل الصور (ZIP) متاح بس للمهندس والأدمن
   const canExportAll = currentProfile.role === 'admin' || currentProfile.role === 'engineer';
   document.getElementById('historyExportRow').hidden = !canExportAll;
+
+  // تبويب "مواعيد توقف الخط" (البرامج الجاهزة) متاح بس للمهندس والأدمن
+  document.getElementById('viewTabPrograms').hidden = !canExportAll;
 
   // شاشة مبسطة للفني: كارتات إحصائيات مختصرة، من غير فلاتر ولا فترة إحصائيات
   const isTechnician = currentProfile.role === 'technician';
@@ -1104,6 +1216,7 @@ function renderManageEmployeesList() {
 
   bindUI();
   restoreNotifyState();
+  await loadPrograms();
   await loadTasks();
   setInterval(refreshView, REFRESH_INTERVAL_MS);
   setInterval(checkDueNotifications, CHECK_NOTIFY_INTERVAL_MS);
@@ -1509,6 +1622,21 @@ function bindUI() {
   document.getElementById('viewTabList').addEventListener('click', () => switchView('list'));
   document.getElementById('viewTabCalendar').addEventListener('click', () => switchView('calendar'));
   document.getElementById('viewTabHistory').addEventListener('click', () => switchView('history'));
+  document.getElementById('viewTabPrograms').addEventListener('click', () => switchView('programs'));
+  document.getElementById('addProgramBtn').addEventListener('click', () => openProgramModal(null));
+  document.getElementById('closeProgramModalBtn').addEventListener('click', closeProgramModal);
+  document.getElementById('cancelProgramModalBtn').addEventListener('click', closeProgramModal);
+  document.getElementById('programModal').addEventListener('click', (e) => { if (e.target.id === 'programModal') closeProgramModal(); });
+  document.getElementById('programForm').addEventListener('submit', saveProgram);
+  document.getElementById('pgRecurModeIntervalBtn').addEventListener('click', () => setPgRecurMode('interval'));
+  document.getElementById('pgRecurModeTimesBtn').addEventListener('click', () => setPgRecurMode('times'));
+  document.getElementById('pgAddRecurTimeBtn').addEventListener('click', addPgRecurTime);
+  document.getElementById('f_program_select').addEventListener('change', () => {
+    const pid = document.getElementById('f_program_select').value;
+    if (!pid) { clearProgramFromForm(); return; }
+    const program = programs.find(p => p.id === pid);
+    if (program) applyProgramToForm(program, { resetStartDate: true });
+  });
   document.getElementById('exportExcelBtn').addEventListener('click', exportHistoryToExcel);
   document.getElementById('exportImagesBtn').addEventListener('click', exportHistoryImagesZip);
   ['histSearchInput', 'histPersonFilter', 'histOnTimeFilter', 'histFromDate', 'histToDate'].forEach(id => {
@@ -1668,11 +1796,14 @@ function switchView(view) {
   document.getElementById('viewTabList').classList.toggle('active', view === 'list');
   document.getElementById('viewTabCalendar').classList.toggle('active', view === 'calendar');
   document.getElementById('viewTabHistory').classList.toggle('active', view === 'history');
+  document.getElementById('viewTabPrograms').classList.toggle('active', view === 'programs');
   document.getElementById('listView').hidden = view !== 'list';
   document.getElementById('calendarView').hidden = view !== 'calendar';
   document.getElementById('historyView').hidden = view !== 'history';
+  document.getElementById('programsView').hidden = view !== 'programs';
   if (view === 'calendar') renderCalendar();
   if (view === 'history') loadHistory();
+  if (view === 'programs') renderProgramsList();
 }
 
 // ------------------------------------------------------------
@@ -2646,9 +2777,360 @@ function computeFirstTimesOccurrence(dateStr, sortedTimes, days) {
   return null;
 }
 
+// ------------------------------------------------------------
+// البرامج (مواعيد توقف الخط) — جداول جاهزة تتربط بأكتر من تاسك/موظف مرة واحدة
+// ------------------------------------------------------------
+let programs = [];
+
+async function loadPrograms() {
+  const { data, error } = await supabase.from('programs').select('*').order('name');
+  if (error) { console.warn('تعذّر تحميل البرامج:', error.message); programs = []; return; }
+  programs = data || [];
+}
+
+const DAY_LABELS_SHORT = ['أحد', 'اتنين', 'تلات', 'أربع', 'خميس', 'جمعة', 'سبت'];
+
+function programScheduleSummary(p) {
+  const daysText = (p.recurrence_days && p.recurrence_days.length)
+    ? p.recurrence_days.slice().sort().map(d => DAY_LABELS_SHORT[d]).join('، ')
+    : 'كل الأيام';
+
+  if (p.recurrence_mode === 'times' && Array.isArray(p.recurrence_times) && p.recurrence_times.length) {
+    return `أوقات محددة (${p.recurrence_times.length}/يوم) — ${daysText}`;
+  }
+  const windowText = p.recurrence_start_time
+    ? ` من ${p.recurrence_start_time}${p.recurrence_end_time ? ' لـ ' + p.recurrence_end_time : ''}`
+    : '';
+  return `كل ${p.recurrence_value} ${unitLabel(p.recurrence_unit)}${windowText} — ${daysText}`;
+}
+
+function renderProgramsList() {
+  const container = document.getElementById('programsList');
+  const empty = document.getElementById('programsEmpty');
+
+  if (programs.length === 0) {
+    container.innerHTML = '';
+    empty.hidden = false;
+    return;
+  }
+  empty.hidden = true;
+
+  container.innerHTML = programs.map(p => {
+    const linkedCount = tasks.filter(t => t.program_id === p.id).length;
+    return `
+    <div class="manage-row" style="align-items:flex-start;">
+      <div style="flex:1;min-width:0;">
+        <div class="h-name">${escapeHtml(p.name)}</div>
+        <div class="h-meta">${escapeHtml(p.task_description)}</div>
+        <div class="hint" style="margin-top:4px;">${escapeHtml(programScheduleSummary(p))} • مربوط بـ ${linkedCount} تاسك</div>
+      </div>
+      <button type="button" class="btn btn-ghost btn-sm" data-program-edit="${p.id}">✎ تعديل</button>
+      <button type="button" class="icon-btn" data-program-delete="${p.id}" title="حذف">🗑</button>
+    </div>`;
+  }).join('');
+
+  container.querySelectorAll('[data-program-edit]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const p = programs.find(x => x.id === btn.dataset.programEdit);
+      if (p) openProgramModal(p);
+    });
+  });
+
+  container.querySelectorAll('[data-program-delete]').forEach(btn => {
+    btn.addEventListener('click', () => deleteProgram(btn.dataset.programDelete));
+  });
+}
+
+let editingProgramId = null;
+let currentPgRecurMode = 'interval';
+let currentPgRecurTimes = [];
+
+function setPgRecurMode(mode) {
+  currentPgRecurMode = mode;
+  document.getElementById('pgRecurModeIntervalBtn').classList.toggle('active', mode === 'interval');
+  document.getElementById('pgRecurModeTimesBtn').classList.toggle('active', mode === 'times');
+  document.getElementById('pgRecurIntervalSection').hidden = mode !== 'interval';
+  document.getElementById('pgRecurTimesSection').hidden = mode !== 'times';
+}
+
+function renderPgRecurTimesList() {
+  const container = document.getElementById('pgRecurTimesList');
+  const sorted = currentPgRecurTimes.slice().sort();
+  if (sorted.length === 0) {
+    container.innerHTML = `<div class="hint">لسه مفيش أوقات مضافة</div>`;
+    return;
+  }
+  container.innerHTML = sorted.map(tm => `
+    <div class="step-item">
+      <span>${tm}</span>
+      <button type="button" class="remove-step-btn" data-pg-remove-time="${tm}">✕</button>
+    </div>
+  `).join('');
+  container.querySelectorAll('[data-pg-remove-time]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      currentPgRecurTimes = currentPgRecurTimes.filter(tm => tm !== btn.dataset.pgRemoveTime);
+      renderPgRecurTimesList();
+    });
+  });
+}
+
+function addPgRecurTime() {
+  const input = document.getElementById('pg_newRecurTimeInput');
+  if (!input.value) { toast('اختار وقت الأول', 'error'); return; }
+  if (!currentPgRecurTimes.includes(input.value)) currentPgRecurTimes.push(input.value);
+  input.value = '';
+  renderPgRecurTimesList();
+}
+
+function openProgramModal(program) {
+  editingProgramId = program ? program.id : null;
+  document.getElementById('programModalTitle').textContent = program ? 'تعديل برنامج' : 'برنامج جديد';
+  document.getElementById('pg_name').value = program?.name || '';
+  document.getElementById('pg_task').value = program?.task_description || '';
+
+  setPgRecurMode(program?.recurrence_mode === 'times' ? 'times' : 'interval');
+  document.getElementById('pg_recurrence_value').value = program?.recurrence_value || 2;
+  document.getElementById('pg_recurrence_unit').value = program?.recurrence_unit || 'hours';
+  document.getElementById('pg_recurrence_start_time').value = program?.recurrence_start_time || '';
+  document.getElementById('pg_recurrence_end_time').value = program?.recurrence_end_time || '';
+  currentPgRecurTimes = Array.isArray(program?.recurrence_times) ? program.recurrence_times.slice().sort() : [];
+  document.getElementById('pg_newRecurTimeInput').value = '';
+  renderPgRecurTimesList();
+
+  const activeDays = program?.recurrence_days;
+  document.querySelectorAll('#pgDayPicker .day-chip').forEach(chip => {
+    const isActive = !activeDays || activeDays.length === 0 || activeDays.includes(Number(chip.dataset.day));
+    chip.classList.toggle('active', isActive);
+  });
+
+  const linkedCount = program ? tasks.filter(t => t.program_id === program.id).length : 0;
+  document.getElementById('programLinkedHint').hidden = linkedCount === 0;
+  document.getElementById('programLinkedCount').textContent = linkedCount;
+
+  document.getElementById('programModal').hidden = false;
+}
+
+function closeProgramModal() {
+  document.getElementById('programModal').hidden = true;
+  document.getElementById('programForm').reset();
+  editingProgramId = null;
+}
+
+async function saveProgram(e) {
+  e.preventDefault();
+  const saveBtn = document.getElementById('saveProgramBtn');
+  saveBtn.disabled = true;
+  saveBtn.textContent = 'جاري الحفظ...';
+
+  const activeChips = [...document.querySelectorAll('#pgDayPicker .day-chip.active')].map(c => Number(c.dataset.day));
+
+  const payload = {
+    name: document.getElementById('pg_name').value.trim(),
+    task_description: document.getElementById('pg_task').value.trim(),
+    recurrence_days: activeChips.length === 7 ? null : activeChips,
+  };
+
+  if (currentPgRecurMode === 'times') {
+    if (currentPgRecurTimes.length === 0) {
+      toast('ضيف وقت واحد على الأقل', 'error');
+      saveBtn.disabled = false; saveBtn.textContent = 'حفظ البرنامج';
+      return;
+    }
+    payload.recurrence_mode = 'times';
+    payload.recurrence_times = currentPgRecurTimes.slice().sort();
+    payload.recurrence_value = null;
+    payload.recurrence_unit = null;
+    payload.recurrence_start_time = null;
+    payload.recurrence_end_time = null;
+  } else {
+    const startTime = document.getElementById('pg_recurrence_start_time').value;
+    if (!startTime) {
+      toast('حدد الساعة اللي يبدأ منها الجدول', 'error');
+      saveBtn.disabled = false; saveBtn.textContent = 'حفظ البرنامج';
+      return;
+    }
+    payload.recurrence_mode = 'interval';
+    payload.recurrence_value = parseInt(document.getElementById('pg_recurrence_value').value, 10);
+    payload.recurrence_unit = document.getElementById('pg_recurrence_unit').value;
+    payload.recurrence_start_time = startTime;
+    payload.recurrence_end_time = document.getElementById('pg_recurrence_end_time').value || null;
+    payload.recurrence_times = null;
+  }
+
+  let error, savedRow;
+  if (editingProgramId) {
+    payload.id = editingProgramId;
+    ({ data: savedRow, error } = await supabase.from('programs').update(payload).eq('id', editingProgramId).select().maybeSingle());
+  } else {
+    payload.created_by = currentUser.id;
+    ({ data: savedRow, error } = await supabase.from('programs').insert(payload).select().maybeSingle());
+  }
+
+  if (error) {
+    toast('حصل خطأ أثناء حفظ البرنامج: ' + error.message, 'error');
+    saveBtn.disabled = false; saveBtn.textContent = 'حفظ البرنامج';
+    return;
+  }
+
+  // لو البرنامج ده كان مربوط بتاسكات قبل كده، حدّث مواعيدها كلها فوراً حسب الجدول الجديد
+  if (editingProgramId && savedRow) {
+    await cascadeProgramUpdate(savedRow);
+  }
+
+  saveBtn.disabled = false;
+  saveBtn.textContent = 'حفظ البرنامج';
+  toast(editingProgramId ? 'تم تحديث البرنامج وكل التاسكات المربوطة بيه ✅' : 'تم إضافة البرنامج', 'success');
+  closeProgramModal();
+  await loadPrograms();
+  await loadTasks();
+  renderProgramsList();
+}
+
+// بتنزّل أي تعديل في البرنامج على كل التاسكات المربوطة بيه فوراً، وتحسب أقرب موعد استحقاق جديد يتوافق مع الجدول المحدّث
+async function cascadeProgramUpdate(program) {
+  const { data: linkedTasks, error } = await supabase.from('tasks').select('*').eq('program_id', program.id).neq('status', 'done');
+  if (error) { console.warn('تعذّر تحميل التاسكات المربوطة بالبرنامج:', error.message); return; }
+  if (!linkedTasks || linkedTasks.length === 0) return;
+
+  const now = new Date();
+
+  for (const t of linkedTasks) {
+    let baseAnchor;
+    if (program.recurrence_mode === 'times') {
+      baseAnchor = new Date(t.review_at); // وضع الأوقات المحددة مش بيعتمد على ساعة الـ anchor أصلاً
+    } else {
+      baseAnchor = new Date(now);
+      const [h, m] = (program.recurrence_start_time || '00:00').split(':').map(Number);
+      baseAnchor.setHours(h, m, 0, 0);
+    }
+
+    const merged = {
+      review_mode: 'recurring',
+      review_at: baseAnchor.toISOString(),
+      recurrence_mode: program.recurrence_mode,
+      recurrence_value: program.recurrence_value,
+      recurrence_unit: program.recurrence_unit,
+      recurrence_days: program.recurrence_days,
+      recurrence_times: program.recurrence_times,
+      recurrence_end_time: program.recurrence_end_time,
+    };
+
+    const nextDue = computeNextDueAfter(merged, new Date(now.getTime() - 1000)) || now;
+
+    const { error: updError } = await supabase.from('tasks').update({
+      task_description: program.task_description,
+      recurrence_mode: program.recurrence_mode,
+      recurrence_value: program.recurrence_value,
+      recurrence_unit: program.recurrence_unit,
+      recurrence_days: program.recurrence_days,
+      recurrence_times: program.recurrence_times,
+      recurrence_end_time: program.recurrence_end_time,
+      review_at: nextDue.toISOString(),
+    }).eq('id', t.id);
+
+    if (updError) console.warn('تعذّر تحديث تاسك مربوط بالبرنامج:', t.id, updError.message);
+  }
+}
+
+async function deleteProgram(id) {
+  const p = programs.find(x => x.id === id);
+  const linkedCount = tasks.filter(t => t.program_id === id).length;
+  const warnText = linkedCount > 0
+    ? `البرنامج ده مربوط بـ ${linkedCount} تاسك. هيتفكّ الربط وتفضل التاسكات شغالة بآخر مواعيد كانت عندها، بس مش هتتحدّث تلقائي تاني. متأكد؟`
+    : `متأكد إنك عايز تمسح برنامج "${p?.name}"؟`;
+  if (!confirm(warnText)) return;
+
+  if (linkedCount > 0) {
+    const { error: unlinkError } = await supabase.from('tasks').update({ program_id: null }).eq('program_id', id);
+    if (unlinkError) { toast('حصل خطأ أثناء فك الربط: ' + unlinkError.message, 'error'); return; }
+  }
+
+  const { error } = await supabase.from('programs').delete().eq('id', id);
+  if (error) { toast('حصل خطأ: ' + error.message, 'error'); return; }
+
+  toast('تم حذف البرنامج', 'success');
+  await loadPrograms();
+  await loadTasks();
+  renderProgramsList();
+}
+
+// ------------------------------------------------------------
+// ربط/فك ربط تاسك بالبرنامج جوه فورم إضافة/تعديل المهمة
+// ------------------------------------------------------------
+function renderProgramPickerOptions() {
+  const select = document.getElementById('f_program_select');
+  const currentVal = select.value;
+  select.innerHTML = '<option value="">بدون — تحديد المواعيد يدوي</option>' +
+    programs.map(p => `<option value="${p.id}">${escapeHtml(p.name)}</option>`).join('');
+  select.value = currentVal;
+  document.getElementById('programPickRow').hidden = programs.length === 0;
+}
+
+function setRecurringFieldsDisabled(disabled) {
+  ['f_recurrence_value', 'f_recurrence_unit', 'f_recurrence_start_time', 'f_recurrence_end_time', 'newRecurTimeInput', 'addRecurTimeBtn'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.disabled = disabled;
+  });
+  document.querySelectorAll('#recurringRow .day-chip').forEach(chip => {
+    chip.disabled = disabled;
+    chip.style.opacity = disabled ? '0.55' : '';
+  });
+  document.getElementById('recurTimesSection').classList.toggle('locked-by-program', disabled);
+}
+
+function applyProgramToForm(program, opts = {}) {
+  const resetStartDate = opts.resetStartDate !== false;
+
+  document.getElementById('f_program_id').value = program.id;
+  document.getElementById('f_task').value = program.task_description;
+  document.getElementById('f_task').readOnly = true;
+
+  setMode('recurring');
+  document.getElementById('modeOnceBtn').disabled = true;
+  document.getElementById('modeRecurringBtn').disabled = true;
+
+  setRecurMode(program.recurrence_mode === 'times' ? 'times' : 'interval');
+  document.getElementById('recurModeIntervalBtn').disabled = true;
+  document.getElementById('recurModeTimesBtn').disabled = true;
+
+  if (program.recurrence_mode === 'times') {
+    currentRecurTimes = Array.isArray(program.recurrence_times) ? program.recurrence_times.slice().sort() : [];
+    renderRecurTimesList();
+  } else {
+    document.getElementById('f_recurrence_value').value = program.recurrence_value || 2;
+    document.getElementById('f_recurrence_unit').value = program.recurrence_unit || 'hours';
+    document.getElementById('f_recurrence_start_time').value = program.recurrence_start_time || '';
+    document.getElementById('f_recurrence_end_time').value = program.recurrence_end_time || '';
+  }
+
+  const activeDays = program.recurrence_days;
+  document.querySelectorAll('#recurringRow .day-chip').forEach(chip => {
+    const isActive = !activeDays || activeDays.length === 0 || activeDays.includes(Number(chip.dataset.day));
+    chip.classList.toggle('active', isActive);
+  });
+
+  setRecurringFieldsDisabled(true);
+
+  if (resetStartDate) {
+    document.getElementById('f_recurrence_start_date').value = toLocalDateStr(new Date());
+  }
+}
+
+function clearProgramFromForm() {
+  document.getElementById('f_program_id').value = '';
+  document.getElementById('f_program_select').value = '';
+  document.getElementById('f_task').readOnly = false;
+  document.getElementById('modeOnceBtn').disabled = false;
+  document.getElementById('modeRecurringBtn').disabled = false;
+  document.getElementById('recurModeIntervalBtn').disabled = false;
+  document.getElementById('recurModeTimesBtn').disabled = false;
+  setRecurringFieldsDisabled(false);
+}
+
 function openModal(task, prefillDate, duplicateSource, personalMode) {
   const src = task || duplicateSource || null;
   editingTaskId = task ? task.id : null;
+  clearProgramFromForm(); // ابدأ من حالة نضيفة دايماً، وبعدين لو فيه برنامج مربوط هيتطبّق تحت
   document.getElementById('modalTitle').textContent = task ? 'تعديل المهمة' : (personalMode ? 'مهمة شخصية' : (duplicateSource ? 'نسخة من مهمة' : 'مهمة جديدة'));
   document.getElementById('f_employee_name').value = src?.employee_name || '';
   document.getElementById('f_employee_code').value = src?.employee_code || '';
@@ -2673,7 +3155,7 @@ function openModal(task, prefillDate, duplicateSource, personalMode) {
   if (duplicateSource?.requires_evidence) document.getElementById('evidenceCheckRow').hidden = false;
 
   if (!task) {
-    document.querySelectorAll('.day-chip').forEach(chip => chip.classList.add('active'));
+    document.querySelectorAll('#recurringRow .day-chip').forEach(chip => chip.classList.add('active'));
     document.getElementById('f_recurrence_end_time').value = '';
     setRecurMode('interval');
     currentRecurTimes = [];
@@ -2716,11 +3198,19 @@ function openModal(task, prefillDate, duplicateSource, personalMode) {
     document.getElementById('f_recurrence_end_time').value = src?.recurrence_end_time || '';
 
     const activeDays = src?.recurrence_days;
-    document.querySelectorAll('.day-chip').forEach(chip => {
+    document.querySelectorAll('#recurringRow .day-chip').forEach(chip => {
       const isActive = !activeDays || activeDays.length === 0 || activeDays.includes(Number(chip.dataset.day));
       chip.classList.toggle('active', isActive);
     });
   }
+
+  renderProgramPickerOptions();
+  document.getElementById('f_program_select').value = src?.program_id || '';
+  if (src?.program_id) {
+    const linkedProgram = programs.find(p => p.id === src.program_id);
+    if (linkedProgram) applyProgramToForm(linkedProgram, { resetStartDate: false });
+  }
+
   document.getElementById('taskModal').hidden = false;
 }
 
@@ -2784,6 +3274,7 @@ async function saveTask(e) {
     created_by: currentUser.id,
     requires_evidence: assignedTo ? requiresEvidence : false,
     evidence_steps: (assignedTo && requiresEvidence && currentSteps.length) ? currentSteps : null,
+    program_id: document.getElementById('f_program_id').value || null,
   };
 
   if (currentMode === 'once') {
@@ -2807,7 +3298,7 @@ async function saveTask(e) {
     const dateVal = document.getElementById('f_recurrence_start_date').value;
     if (!dateVal) { toast('حدد تاريخ بدء التكرار', 'error'); resetSaveBtn(); return; }
 
-    const activeChips = [...document.querySelectorAll('.day-chip.active')].map(c => Number(c.dataset.day));
+    const activeChips = [...document.querySelectorAll('#recurringRow .day-chip.active')].map(c => Number(c.dataset.day));
     // لو كل الأيام مفعّلة، نخزّن null (يعني كل يوم) بدل ما نخزن مصفوفة فيها كل الأرقام
     payload.recurrence_days = activeChips.length === 7 ? null : activeChips;
 
